@@ -1,8 +1,11 @@
 # OrderFlow
 
 An e-commerce **order management** platform, built from scratch to demonstrate
-backend, DevOps, cloud, and observability engineering. See the design spec in
-[`docs/superpowers/specs/`](docs/superpowers/specs/).
+backend, DevOps, cloud, and observability engineering.
+
+> **New here?** Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) — the single source of
+> truth for architecture, decisions, status, and how to continue. The full design
+> spec lives in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
 ## Status
 
