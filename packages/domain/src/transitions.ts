@@ -1,0 +1,31 @@
+import type { OrderStatus } from "./order-status.js";
+import type { Role } from "./roles.js";
+
+export type OrderAction = "confirm" | "pack" | "ship" | "deliver" | "cancel" | "return";
+
+export interface TransitionRule {
+  readonly action: OrderAction;
+  readonly from: OrderStatus;
+  readonly to: OrderStatus;
+  readonly allowedRoles: readonly Role[];
+}
+
+export const TRANSITIONS: readonly TransitionRule[] = [
+  { action: "confirm", from: "PENDING", to: "CONFIRMED", allowedRoles: ["ops", "admin"] },
+  { action: "pack", from: "CONFIRMED", to: "PACKED", allowedRoles: ["ops", "admin"] },
+  { action: "ship", from: "PACKED", to: "SHIPPED", allowedRoles: ["ops", "admin"] },
+  { action: "deliver", from: "SHIPPED", to: "DELIVERED", allowedRoles: ["ops", "admin"] },
+  { action: "cancel", from: "PENDING", to: "CANCELLED", allowedRoles: ["customer", "ops", "admin"] },
+  { action: "cancel", from: "CONFIRMED", to: "CANCELLED", allowedRoles: ["ops", "admin"] },
+  { action: "cancel", from: "PACKED", to: "CANCELLED", allowedRoles: ["ops", "admin"] },
+  { action: "cancel", from: "SHIPPED", to: "CANCELLED", allowedRoles: ["admin"] },
+  { action: "return", from: "DELIVERED", to: "RETURNED", allowedRoles: ["ops", "admin"] },
+];
+
+export function findRule(from: OrderStatus, action: OrderAction): TransitionRule | undefined {
+  return TRANSITIONS.find((rule) => rule.from === from && rule.action === action);
+}
+
+export function canTransition(from: OrderStatus, action: OrderAction): boolean {
+  return findRule(from, action) !== undefined;
+}
