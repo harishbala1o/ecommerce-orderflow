@@ -1,9 +1,10 @@
-export { ORDER_STATUSES, isTerminal, type OrderStatus } from "./order-status.js";
+export { ORDER_STATUSES, type OrderStatus } from "./order-status.js";
 export { ROLES, type Role } from "./roles.js";
 export {
   TRANSITIONS,
   findRule,
   canTransition,
+  isTerminal,
   type OrderAction,
   type TransitionRule,
 } from "./transitions.js";

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { findRule, canTransition } from "./transitions.js";
+import { ORDER_STATUSES } from "./order-status.js";
+import { TRANSITIONS, findRule, canTransition, isTerminal } from "./transitions.js";
 
 describe("transition table", () => {
   it("defines the happy-path chain", () => {
@@ -35,5 +36,30 @@ describe("transition table", () => {
   it("lets a customer cancel only from PENDING", () => {
     expect(findRule("PENDING", "cancel")?.allowedRoles).toContain("customer");
     expect(findRule("CONFIRMED", "cancel")?.allowedRoles).not.toContain("customer");
+  });
+});
+
+describe("isTerminal", () => {
+  it("treats only CANCELLED and RETURNED as terminal", () => {
+    expect(isTerminal("CANCELLED")).toBe(true);
+    expect(isTerminal("RETURNED")).toBe(true);
+  });
+
+  it("treats DELIVERED as non-terminal — a return can still be initiated", () => {
+    expect(isTerminal("DELIVERED")).toBe(false);
+    expect(canTransition("DELIVERED", "return")).toBe(true);
+  });
+
+  it("treats all in-flight statuses as non-terminal", () => {
+    for (const status of ["PENDING", "CONFIRMED", "PACKED", "SHIPPED"] as const) {
+      expect(isTerminal(status)).toBe(false);
+    }
+  });
+
+  it("invariant: a status is terminal iff it has no outgoing transition", () => {
+    for (const status of ORDER_STATUSES) {
+      const hasOutgoing = TRANSITIONS.some((rule) => rule.from === status);
+      expect(isTerminal(status)).toBe(!hasOutgoing);
+    }
   });
 });

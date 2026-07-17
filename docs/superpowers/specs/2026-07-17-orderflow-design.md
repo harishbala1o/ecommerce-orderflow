@@ -73,7 +73,10 @@ Rules:
   structured GraphQL/Action errors — never stack traces.
 - Every accepted transition writes an `order_events` row (audit) and emits a
   domain event for async side effects.
-- Terminal states: `DELIVERED`, `RETURNED`, `CANCELLED`.
+- Terminal states (no outgoing transition): `CANCELLED`, `RETURNED`. `DELIVERED`
+  is a *completed but reversible* state — a `return` can still be initiated from
+  it — so it is deliberately **not** terminal. `isTerminal` is derived from the
+  transition table so the two can never drift.
 
 The state machine lives in a framework-agnostic `packages/domain` module so it is
 trivially unit-testable in isolation.
