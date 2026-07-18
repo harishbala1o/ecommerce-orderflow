@@ -17,4 +17,5 @@ export {
   DomainError,
   IllegalTransitionError,
   ForbiddenTransitionError,
+  InsufficientStockError,
 } from "./errors.js";
