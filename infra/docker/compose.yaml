@@ -1,4 +1,4 @@
-name: orderflow
+name: ecommerce-orderflow
 
 services:
   postgres:

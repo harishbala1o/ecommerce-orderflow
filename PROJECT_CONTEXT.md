@@ -1,4 +1,4 @@
-# OrderFlow — Project Context & Onboarding Guide
+# Ecommerce OrderFlow — Project Context & Onboarding Guide
 
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
@@ -13,7 +13,7 @@
 
 ## 1. Project overview & objectives
 
-**OrderFlow** is an e-commerce **order management** platform (the operations side, not a
+**Ecommerce OrderFlow** is an e-commerce **order management** platform (the operations side, not a
 storefront) built from scratch as a flagship portfolio project. Its objective is to
 demonstrate — credibly and in a way that reads as *thoughtfully engineered, not
 AI-generated* — real skills across **backend engineering, DevOps, cloud, and
@@ -31,7 +31,7 @@ E-commerce operations teams need to move orders through a fulfillment lifecycle
 (placed → confirmed → packed → shipped → delivered, with cancellations and returns),
 with **different people allowed to do different things** and a **reliable audit trail**
 of who changed what. The reference inspiration is Appsmith's "e-commerce order
-management dashboard with Hasura and GraphQL" blog, but OrderFlow is built from scratch
+management dashboard with Hasura and GraphQL" blog, but Ecommerce OrderFlow is built from scratch
 with modern tooling rather than a low-code tool — the point is to *show the engineering*.
 
 The core domain problem is **workflow correctness**: order state must only change through
@@ -118,7 +118,7 @@ and any UI. Everything currently runs under the Hasura admin secret.
 ## 6. Repository structure
 
 ```
-orderflow/
+ecommerce-orderflow/
 ├── package.json, pnpm-workspace.yaml, turbo.json   # monorepo tooling
 ├── tsconfig.base.json, eslint.config.mjs           # shared TS/lint config
 ├── Makefile                                         # up / down / seed / smoke / reset
@@ -138,7 +138,7 @@ orderflow/
 │   └── docker/ compose.yaml · smoke-test.sh
 └── docs/
     └── superpowers/
-        ├── specs/2026-07-17-orderflow-design.md      # the approved design
+        ├── specs/2026-07-17-ecommerce-orderflow-design.md      # the approved design
         └── plans/2026-07-17-m1-*.md, m2-*.md          # implementation plans
 ```
 
@@ -212,7 +212,7 @@ use `applyTransition` for authorization.
 
 **Tech debt / to revisit:**
 - Package entry points reference `./src/*.ts` (fine for the TS monorepo now; revisit build
-  outputs when the NestJS service consumes `@orderflow/domain` in M3).
+  outputs when the NestJS service consumes `@ecommerce-orderflow/domain` in M3).
 - Seed uses fixed UUIDs for repeatable smoke tests — fine for dev; not for prod.
 
 **Future enhancements:** inventory as a second bounded context, SLO/error-budget
@@ -240,7 +240,7 @@ dashboards, k6 load testing, canary/blue-green rollout, transactional-outbox wri
 ### Local
 ```bash
 # prerequisites: Node 22, pnpm 9, Docker
-cd orderflow
+cd ecommerce-orderflow
 pnpm install
 
 # domain logic (no Docker needed)
@@ -263,7 +263,7 @@ secrets via Kubernetes `Secret`s. See spec §5.
 ## 12. Recommended next steps & roadmap
 
 **Immediate next (M3 — Workflow Service):**
-1. Scaffold `apps/workflow-service` (NestJS) consuming `@orderflow/domain`.
+1. Scaffold `apps/workflow-service` (NestJS) consuming `@ecommerce-orderflow/domain`.
 2. Implement transition endpoints and wire them as **Hasura Actions** (sync).
 3. Implement **Event Trigger** handlers (audit write, stock decrement, notification stub)
    with idempotency keyed on the Hasura event id; transition + audit write in one DB tx.

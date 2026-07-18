@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the OrderFlow monorepo and build the framework-agnostic order **state machine** with an exhaustive test suite — the correctness core every later milestone depends on.
+**Goal:** Stand up the Ecommerce OrderFlow monorepo and build the framework-agnostic order **state machine** with an exhaustive test suite — the correctness core every later milestone depends on.
 
 **Architecture:** pnpm-workspaces + Turborepo monorepo. A `packages/config` package owns zod-validated environment loading. A `packages/domain` package owns the order status model, the role model, the transition table, typed domain errors, and a pure `applyTransition` function. No frameworks, no I/O — just tested logic.
 
@@ -71,7 +71,7 @@ trim_trailing_whitespace = true
 
 ```json
 {
-  "name": "orderflow",
+  "name": "ecommerce-orderflow",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@9.12.0",
@@ -156,7 +156,7 @@ export default tseslint.config(
 
 - [ ] **Step 9: Install and verify**
 
-Run: `cd /Users/hasura/orderflow && pnpm install`
+Run: `cd /Users/hasura/ecommerce-orderflow && pnpm install`
 Expected: completes, creates `pnpm-lock.yaml`, no errors.
 
 Run: `pnpm exec turbo --version`
@@ -182,13 +182,13 @@ git commit -m "chore: scaffold pnpm + turborepo monorepo"
 - Test: `packages/config/src/env.test.ts`
 
 **Interfaces:**
-- Produces: `loadEnv(source?: Record<string, string | undefined>): Env` — parses+validates env, throws a readable error listing all invalid keys on failure. `Env` type has `NODE_ENV: 'development' | 'test' | 'production'` and `LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error'` (defaults `info`). Later packages import `{ loadEnv, type Env }` from `@orderflow/config`.
+- Produces: `loadEnv(source?: Record<string, string | undefined>): Env` — parses+validates env, throws a readable error listing all invalid keys on failure. `Env` type has `NODE_ENV: 'development' | 'test' | 'production'` and `LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error'` (defaults `info`). Later packages import `{ loadEnv, type Env }` from `@ecommerce-orderflow/config`.
 
 - [ ] **Step 1: Create `packages/config/package.json`**
 
 ```json
 {
-  "name": "@orderflow/config",
+  "name": "@ecommerce-orderflow/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -252,7 +252,7 @@ describe("loadEnv", () => {
 
 - [ ] **Step 5: Run test to verify it fails**
 
-Run: `pnpm --filter @orderflow/config test`
+Run: `pnpm --filter @ecommerce-orderflow/config test`
 Expected: FAIL — cannot resolve `./env.js` / `loadEnv` is not defined.
 
 - [ ] **Step 6: Implement `packages/config/src/env.ts`**
@@ -287,7 +287,7 @@ export { loadEnv, type Env } from "./env.js";
 
 - [ ] **Step 8: Run test to verify it passes**
 
-Run: `pnpm --filter @orderflow/config test`
+Run: `pnpm --filter @ecommerce-orderflow/config test`
 Expected: PASS — 4 tests green.
 
 - [ ] **Step 9: Commit**
@@ -320,7 +320,7 @@ git commit -m "feat(config): add zod-validated environment loader"
 
 ```json
 {
-  "name": "@orderflow/domain",
+  "name": "@ecommerce-orderflow/domain",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -384,7 +384,7 @@ describe("order status", () => {
 
 - [ ] **Step 5: Run test to verify it fails**
 
-Run: `pnpm --filter @orderflow/domain test`
+Run: `pnpm --filter @ecommerce-orderflow/domain test`
 Expected: FAIL — cannot resolve `./order-status.js`.
 
 - [ ] **Step 6: Implement `packages/domain/src/order-status.ts`**
@@ -443,7 +443,7 @@ export class ForbiddenTransitionError extends DomainError {
 
 - [ ] **Step 9: Run test to verify it passes**
 
-Run: `pnpm --filter @orderflow/domain test order-status`
+Run: `pnpm --filter @ecommerce-orderflow/domain test order-status`
 Expected: PASS — 3 tests green.
 
 - [ ] **Step 10: Commit**
@@ -516,7 +516,7 @@ describe("transition table", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @orderflow/domain test transitions`
+Run: `pnpm --filter @ecommerce-orderflow/domain test transitions`
 Expected: FAIL — cannot resolve `./transitions.js`.
 
 - [ ] **Step 3: Implement `packages/domain/src/transitions.ts`**
@@ -557,7 +557,7 @@ export function canTransition(from: OrderStatus, action: OrderAction): boolean {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @orderflow/domain test transitions`
+Run: `pnpm --filter @ecommerce-orderflow/domain test transitions`
 Expected: PASS — all cases green.
 
 - [ ] **Step 5: Commit**
@@ -631,7 +631,7 @@ describe("applyTransition", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @orderflow/domain test state-machine`
+Run: `pnpm --filter @ecommerce-orderflow/domain test state-machine`
 Expected: FAIL — cannot resolve `./state-machine.js`.
 
 - [ ] **Step 3: Implement `packages/domain/src/state-machine.ts`**
@@ -692,12 +692,12 @@ export {
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `pnpm --filter @orderflow/domain test state-machine`
+Run: `pnpm --filter @ecommerce-orderflow/domain test state-machine`
 Expected: PASS — 7 tests green.
 
 - [ ] **Step 6: Run the whole domain suite + typecheck**
 
-Run: `pnpm --filter @orderflow/domain test && pnpm --filter @orderflow/domain typecheck`
+Run: `pnpm --filter @ecommerce-orderflow/domain test && pnpm --filter @ecommerce-orderflow/domain typecheck`
 Expected: all domain tests green; `tsc --noEmit` reports no errors.
 
 - [ ] **Step 7: Commit**
@@ -721,7 +721,7 @@ git commit -m "feat(domain): add applyTransition orchestrator and public API"
 - [ ] **Step 1: Create `README.md`**
 
 ```markdown
-# OrderFlow
+# Ecommerce OrderFlow
 
 An e-commerce **order management** platform, built from scratch to demonstrate
 backend, DevOps, cloud, and observability engineering. See the design spec in
@@ -750,8 +750,8 @@ pnpm lint        # lint every package
 
 - [ ] **Step 2: Run the full root gate**
 
-Run: `cd /Users/hasura/orderflow && pnpm lint && pnpm typecheck && pnpm test`
-Expected: Turborepo runs lint, typecheck, and test across `@orderflow/config` and `@orderflow/domain`; all green.
+Run: `cd /Users/hasura/ecommerce-orderflow && pnpm lint && pnpm typecheck && pnpm test`
+Expected: Turborepo runs lint, typecheck, and test across `@ecommerce-orderflow/config` and `@ecommerce-orderflow/domain`; all green.
 
 - [ ] **Step 3: Commit**
 

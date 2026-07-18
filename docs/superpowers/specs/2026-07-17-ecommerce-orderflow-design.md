@@ -1,4 +1,4 @@
-# OrderFlow — Design Spec
+# Ecommerce OrderFlow — Design Spec
 
 > Status: **Approved for planning** · Date: 2026-07-17
 > A flagship portfolio project: an e-commerce **order management** dashboard,
@@ -220,7 +220,7 @@ blue-green/canary rollout; a transactional-outbox writeup.
 Monorepo (pnpm workspaces + Turborepo):
 
 ```
-orderflow/
+ecommerce-orderflow/
 ├── apps/
 │   ├── web/                 # Next.js dashboard
 │   └── workflow-service/    # NestJS: state machine, Actions, Event handlers

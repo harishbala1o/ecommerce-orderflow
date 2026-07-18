@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** A one-command local data layer — `make up` brings up Postgres + Hasura, auto-applies versioned migrations and metadata, seeds sample data, and serves a working GraphQL API over the OrderFlow schema.
+**Goal:** A one-command local data layer — `make up` brings up Postgres + Hasura, auto-applies versioned migrations and metadata, seeds sample data, and serves a working GraphQL API over the Ecommerce OrderFlow schema.
 
 **Architecture:** Postgres 16 holds the schema. Hasura runs from the **`cli-migrations-v3`** image so migrations (`hasura/migrations`) and metadata (`hasura/metadata`) are applied automatically on boot — no hand-applying in a console, everything is versioned in git. Tables are tracked with FK-derived relationships. RBAC/permissions are deliberately deferred to M4 (they need Keycloak JWT claims); M2 runs with admin access only.
 
@@ -32,14 +32,14 @@
 
 ```dotenv
 # Postgres
-POSTGRES_USER=orderflow
-POSTGRES_PASSWORD=orderflow_dev_pw
-POSTGRES_DB=orderflow
+POSTGRES_USER=ecommerce-orderflow
+POSTGRES_PASSWORD=ecommerce-orderflow_dev_pw
+POSTGRES_DB=ecommerce-orderflow
 
 # Hasura
-HASURA_GRAPHQL_ADMIN_SECRET=orderflow_dev_admin_secret
-HASURA_GRAPHQL_DATABASE_URL=postgres://orderflow:orderflow_dev_pw@postgres:5432/orderflow
-PG_DATABASE_URL=postgres://orderflow:orderflow_dev_pw@postgres:5432/orderflow
+HASURA_GRAPHQL_ADMIN_SECRET=ecommerce-orderflow_dev_admin_secret
+HASURA_GRAPHQL_DATABASE_URL=postgres://ecommerce-orderflow:ecommerce-orderflow_dev_pw@postgres:5432/ecommerce-orderflow
+PG_DATABASE_URL=postgres://ecommerce-orderflow:ecommerce-orderflow_dev_pw@postgres:5432/ecommerce-orderflow
 ```
 
 - [ ] **Step 2: `hasura/config.yaml`**
@@ -212,9 +212,9 @@ git add -A && git commit -m "feat(db): add initial schema migration"
 
 ```sql
 insert into users (id, keycloak_id, email, display_name, role) values
-  ('11111111-1111-1111-1111-111111111111', null, 'admin@orderflow.dev',    'Ada Admin',      'admin'),
-  ('22222222-2222-2222-2222-222222222222', null, 'ops@orderflow.dev',      'Otto Ops',       'ops'),
-  ('33333333-3333-3333-3333-333333333333', null, 'customer@orderflow.dev', 'Cara Customer',  'customer');
+  ('11111111-1111-1111-1111-111111111111', null, 'admin@ecommerce-orderflow.dev',    'Ada Admin',      'admin'),
+  ('22222222-2222-2222-2222-222222222222', null, 'ops@ecommerce-orderflow.dev',      'Otto Ops',       'ops'),
+  ('33333333-3333-3333-3333-333333333333', null, 'customer@ecommerce-orderflow.dev', 'Cara Customer',  'customer');
 
 insert into products (id, sku, name, description, unit_price_cents, stock_qty) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'SKU-KEYB', 'Mechanical Keyboard', 'Tactile, hot-swap', 12900, 50),
@@ -353,7 +353,7 @@ git add -A && git commit -m "feat(hasura): track tables and FK relationships"
 - [ ] **Step 1: `infra/docker/compose.yaml`**
 
 ```yaml
-name: orderflow
+name: ecommerce-orderflow
 
 services:
   postgres:
@@ -428,7 +428,7 @@ env:
 up: env
 	$(COMPOSE) up -d
 	@echo "Waiting for Hasura to be healthy..."
-	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' orderflow-hasura-1 2>/dev/null)" = "healthy" ]; do sleep 2; done
+	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' ecommerce-orderflow-hasura-1 2>/dev/null)" = "healthy" ]; do sleep 2; done
 	@echo "Up. GraphQL: http://localhost:8080/v1/graphql  Console: http://localhost:8080/console"
 
 down:
@@ -493,7 +493,7 @@ Run: `chmod +x infra/docker/smoke-test.sh`
 
 Run:
 ```bash
-cd /Users/hasura/orderflow
+cd /Users/hasura/ecommerce-orderflow
 cp -n .env.example .env || true
 docker compose --env-file .env -f infra/docker/compose.yaml up -d
 # wait for healthy, then:

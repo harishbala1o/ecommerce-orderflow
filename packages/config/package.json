@@ -1,5 +1,5 @@
 {
-  "name": "@orderflow/config",
+  "name": "@ecommerce-orderflow/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",

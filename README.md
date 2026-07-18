@@ -1,4 +1,4 @@
-# OrderFlow
+# Ecommerce OrderFlow
 
 An e-commerce **order management** platform, built from scratch to demonstrate
 backend, DevOps, cloud, and observability engineering.

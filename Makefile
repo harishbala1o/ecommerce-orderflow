@@ -9,7 +9,7 @@ env:
 up: env
 	$(COMPOSE) up -d
 	@echo "Waiting for Hasura to be healthy..."
-	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' orderflow-hasura-1 2>/dev/null)" = "healthy" ]; do sleep 2; done
+	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' ecommerce-orderflow-hasura-1 2>/dev/null)" = "healthy" ]; do sleep 2; done
 	@echo "Up. GraphQL: http://localhost:8080/v1/graphql  Console: http://localhost:8080/console"
 
 down:
