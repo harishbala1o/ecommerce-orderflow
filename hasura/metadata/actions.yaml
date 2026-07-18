@@ -1,6 +1,31 @@
-actions: []
+actions:
+  - name: placeOrder
+    definition:
+      kind: synchronous
+      handler: http://workflow-service:3001/actions/place-order
+      headers:
+        - name: x-action-secret
+          value_from_env: ACTION_SECRET
+    permissions:
+      - role: customer
+      - role: admin
+    comment: Place a new order (customer/admin)
+  - name: transitionOrder
+    definition:
+      kind: synchronous
+      handler: http://workflow-service:3001/actions/transition-order
+      headers:
+        - name: x-action-secret
+          value_from_env: ACTION_SECRET
+    permissions:
+      - role: customer
+      - role: ops
+      - role: admin
+    comment: Advance an order through its lifecycle
 custom_types:
   enums: []
-  input_objects: []
-  objects: []
+  input_objects:
+    - name: OrderItemInput
+  objects:
+    - name: OrderMutationResult
   scalars: []

@@ -1,0 +1,14 @@
+type Mutation {
+  placeOrder(items: [OrderItemInput!]!): OrderMutationResult
+  transitionOrder(orderId: uuid!, action: String!): OrderMutationResult
+}
+
+input OrderItemInput {
+  productId: uuid!
+  quantity: Int!
+}
+
+type OrderMutationResult {
+  id: uuid!
+  status: String!
+}
