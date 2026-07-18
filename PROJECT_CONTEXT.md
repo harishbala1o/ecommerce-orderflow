@@ -104,16 +104,20 @@ Full rationale lives in the design spec §3–§10 and will be captured as ADRs 
 |---|---|---|---|
 | M1 | Foundation + domain state machine | Monorepo, config package, order state machine + 18 tests | ✅ **Done** |
 | M2 | Data layer | Postgres schema + migrations, Hasura tracking + relationships, seed, Docker Compose, smoke test | ✅ **Done** |
-| M3 | Workflow service | NestJS service, Hasura Actions (sync transitions), Event Triggers (async side effects), idempotency, Testcontainers integration tests | ⏳ **Next** |
-| M4 | Auth + dashboard | Keycloak, JWT→Hasura claims, per-role RBAC permissions, Next.js dashboard, typed GraphQL client, Playwright E2E | ☐ Planned |
+| M3 | Workflow service | NestJS service, Hasura Actions (sync transitions), Event Triggers (async side effects), idempotency, Testcontainers integration tests | ✅ **Done** |
+| M4 | Auth + dashboard | Keycloak, JWT→Hasura claims, per-role RBAC permissions, Next.js dashboard, typed GraphQL client, Playwright E2E | ⏳ **Next** |
 | M5 | Observability + CI + k8s | Logging/metrics/tracing/Grafana, GitHub Actions CI, Helm + kind deploy, README + ADRs | ☐ Planned |
 | P2 | Production-shaped | Terraform → GKE, HPA, NetworkPolicy, alerting, CD | ☐ Future |
 | P3 | Depth flourishes | Inventory service, SLOs, k6 load tests, canary rollout | ☐ Future (optional) |
 
-**What works today:** the domain logic (unit-tested) and the data layer — a live GraphQL
-API over the schema, with relationships and realtime subscriptions, browsable via the
-Hasura console. **Not yet built:** order-transition mutations, per-role permissions, auth,
-and any UI. Everything currently runs under the Hasura admin secret.
+**What works today:** the domain logic (unit-tested), the data layer (live GraphQL API,
+relationships, subscriptions), and the **workflow service** — `placeOrder` and
+`transitionOrder` run through Hasura Actions into NestJS, which applies the state machine,
+writes the audit event, and reserves stock atomically; an async Event Trigger fires back
+into the service on every `order_events` insert (idempotent). Verified end-to-end via the
+running stack. **Not yet built:** authentication and per-role SELECT permissions (M4) —
+reads still use the Hasura admin secret, and the actor role is supplied via the
+`x-hasura-role` header (Keycloak JWT supplies it in M4). No UI yet (M4).
 
 ## 6. Repository structure
 
@@ -125,14 +129,18 @@ ecommerce-orderflow/
 ├── .env.example                                     # env template (copy to .env)
 ├── README.md                                        # quick-start
 ├── PROJECT_CONTEXT.md                               # ← this file
+├── apps/
+│   └── workflow-service/  # ★ NestJS: only writer of order state; Actions + Event handlers
+│       ├── src/ config · db (pool, repository, tokens) · common (guard, session, error map) · orders · events
+│       └── test/ Testcontainers integration tests · Dockerfile
 ├── packages/
-│   ├── domain/          # ★ order state machine (pure, framework-agnostic, 18 tests)
+│   ├── domain/          # ★ order state machine (pure, framework-agnostic, 19 tests)
 │   │   └── src/ order-status.ts · roles.ts · transitions.ts · errors.ts · state-machine.ts · index.ts (+ *.test.ts)
 │   └── config/          # zod-validated env loader
 ├── hasura/
 │   ├── config.yaml
-│   ├── migrations/default/1720000000000_init/       # schema (up.sql / down.sql)
-│   ├── metadata/                                     # tracked tables + relationships (versioned)
+│   ├── migrations/default/…_init, …_processed_events/  # schema (up.sql / down.sql)
+│   ├── metadata/                                     # tracked tables, relationships, actions, event trigger
 │   └── seeds/default/1720000000001_seed/up.sql      # sample data
 ├── infra/
 │   └── docker/ compose.yaml · smoke-test.sh
@@ -179,11 +187,21 @@ use `applyTransition` for authorization.
 - Endpoint: `http://localhost:8080/v1/graphql` · Console: `http://localhost:8080/console`.
 - Tracked tables + FK relationships: `orders.customer`, `orders.items`, `orders.events`,
   `order_items.order/product`, `users.orders`, `order_events.order`.
-- Reads, filters, aggregates, and subscriptions all work today (admin only).
+- **Action mutations** (→ workflow service): `placeOrder(items)`,
+  `transitionOrder(orderId, action)`. Reads/filters/aggregates/subscriptions work admin-only.
+
+### Workflow service actions & events (M3, implemented)
+- **Sync Actions**: `placeOrder`, `transitionOrder` → `POST /actions/*` on the NestJS
+  service (shared `x-action-secret`). The service loads the order `FOR UPDATE`, checks
+  ownership, applies the domain state machine, reserves stock on `confirm`, updates status,
+  and appends an `order_events` audit row — all in one transaction. Domain errors map to
+  `{ message, extensions: { code } }`.
+- **Async Event Trigger** `order_event_created`: fires on every `order_events` INSERT →
+  `POST /events/order-event`; idempotent via `processed_events` (deduped on Hasura delivery
+  id). Note: because it's a DB-level trigger, the service's own direct-SQL inserts fire it too.
 
 ### Integrations (planned)
-- **Hasura Actions → NestJS** (sync transitions), **Event Triggers → NestJS** (async side
-  effects), **Keycloak JWKS → Hasura** (JWT validation), **Keycloak claims → Hasura RBAC**.
+- **Keycloak JWKS → Hasura** (JWT validation), **Keycloak claims → Hasura RBAC** (M4).
 
 ## 8. Infrastructure, deployment, CI/CD & environment
 
@@ -200,8 +218,8 @@ use `applyTransition` for authorization.
 ## 9. Known limitations, tech debt, pending tasks & future enhancements
 
 **Current limitations (by design, not bugs):**
-- No order-transition mutations yet — the state machine is not wired to the DB (M3).
-- No authentication or per-role permissions — everything runs under the admin secret (M4).
+- No authentication or per-role SELECT permissions — reads use the admin secret and the
+  actor role is passed via the `x-hasura-role` header (Keycloak JWT supplies it in M4).
 - No UI (M4). No observability, CI, or deployment yet (M5+).
 
 **Known quirks:**
@@ -211,9 +229,9 @@ use `applyTransition` for authorization.
   error — documented in the README.
 
 **Tech debt / to revisit:**
-- Package entry points reference `./src/*.ts` (fine for the TS monorepo now; revisit build
-  outputs when the NestJS service consumes `@ecommerce-orderflow/domain` in M3).
 - Seed uses fixed UUIDs for repeatable smoke tests — fine for dev; not for prod.
+- Workflow-service Docker image uses a single-registry `pnpm deploy` build; fine, but a
+  slimmer multi-stage runtime could be tuned further in M5.
 
 **Future enhancements:** inventory as a second bounded context, SLO/error-budget
 dashboards, k6 load testing, canary/blue-green rollout, transactional-outbox writeup (all P3).
@@ -281,5 +299,10 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-18** — M3 (Order Workflow Service) completed: NestJS actions + async event
+  trigger, transactional transitions with audit + atomic stock reservation, idempotency,
+  Testcontainers integration tests; verified end-to-end in the running stack. Fixed a
+  PG_POOL ESM import cycle found only by running the container. Project renamed to
+  **Ecommerce OrderFlow** (folder, npm scope, Docker project, Postgres identifiers).
 - **2026-07-17** — M1 (foundation + domain state machine) and M2 (data layer) completed;
   `isTerminal` bug fixed (derived from transition table); this context doc created.
