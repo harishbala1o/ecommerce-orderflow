@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { Pool } from "pg";
 import type { PoolClient } from "pg";
 import type { OrderStatus } from "@ecommerce-orderflow/domain";
-import { PG_POOL } from "./db.module.js";
+import { PG_POOL } from "./tokens.js";
 
 type Executor = Pool | PoolClient;
 

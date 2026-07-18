@@ -3,8 +3,9 @@ import { Pool } from "pg";
 import { ConfigModule, APP_CONFIG, type ServiceConfig } from "../config/config.module.js";
 import { createPool } from "./pool.js";
 import { OrderRepository } from "./order.repository.js";
+import { PG_POOL } from "./tokens.js";
 
-export const PG_POOL = Symbol("PG_POOL");
+export { PG_POOL };
 
 @Module({
   imports: [ConfigModule],
