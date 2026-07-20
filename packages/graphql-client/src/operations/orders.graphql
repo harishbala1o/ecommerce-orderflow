@@ -1,0 +1,71 @@
+query OrdersList {
+  orders(order_by: { updated_at: desc }) {
+    id
+    status
+    total_cents
+    updated_at
+    customer {
+      display_name
+    }
+    items {
+      id
+      quantity
+    }
+  }
+}
+
+query OrderDetail($id: uuid!) {
+  orders_by_pk(id: $id) {
+    id
+    status
+    total_cents
+    created_at
+    updated_at
+    customer {
+      display_name
+      email
+    }
+    items {
+      id
+      quantity
+      unit_price_cents
+      product {
+        name
+        sku
+      }
+    }
+    events(order_by: { created_at: asc }) {
+      id
+      from_status
+      to_status
+      action
+      actor_role
+      created_at
+    }
+  }
+}
+
+query ProductsList {
+  products(order_by: { name: asc }) {
+    id
+    sku
+    name
+    description
+    unit_price_cents
+    stock_qty
+  }
+}
+
+mutation PlaceOrder($items: [OrderItemInput!]!) {
+  placeOrder(items: $items) {
+    id
+    status
+  }
+}
+
+mutation TransitionOrder($orderId: uuid!, $action: String!) {
+  transitionOrder(orderId: $orderId, action: $action) {
+    id
+    status
+  }
+}
