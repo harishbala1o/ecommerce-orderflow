@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-17 · **Current milestone:** M2 complete, M3 next.
+> **Last updated:** 2026-07-20 · **Current milestone:** M4 complete, M5 next.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -43,7 +43,7 @@ the heart of the project.
 ```
                          ┌──────────────────────────┐
    Browser ── Next.js ───┤  Keycloak (OIDC) → JWT    │  role claims in JWT
-   dashboard (M4)         └──────────────────────────┘
+   dashboard (M4 ✅)      └──────────────────────────┘
         │ GraphQL (JWT bearer)
         ▼
    ┌─────────────┐   Actions (sync mutations)   ┌──────────────────────┐
@@ -86,9 +86,9 @@ Full rationale lives in the design spec §3–§10 and will be captured as ADRs 
 | Data store | **PostgreSQL 16** | Relational integrity for orders/items/events; native enum for status |
 | GraphQL API | **Hasura graphql-engine v2.42** | Auto-generated CRUD + subscriptions + declarative RBAC; versioned metadata/migrations |
 | Workflow service | **NestJS (TypeScript)** | Structured modules/DI → a real "clean architecture" story; unifies language with frontend |
-| Auth/IdP | **Keycloak** (planned M4) | Self-hosted OIDC; real IAM; JWT role claims into Hasura; strong DevOps signal |
-| Frontend | **Next.js + React + TS** (planned M4) | Industry default for dashboards; pairs with typed GraphQL client |
-| GraphQL client | **graphql-codegen + urql** (planned M4) | Typed operations; lighter than Apollo |
+| Auth/IdP | **Keycloak 25** (M4 ✅) | Self-hosted OIDC; real IAM; JWT role claims into Hasura; strong DevOps signal |
+| Frontend | **Next.js 14 + React + TS** (M4 ✅) | Industry default for dashboards; pairs with typed GraphQL client |
+| GraphQL client | **graphql-codegen + urql** (M4 ✅) | Typed operations; lighter than Apollo |
 | Validation | **zod** | Fail-fast env + boundary validation with readable errors |
 | Monorepo | **pnpm workspaces + Turborepo** | One clone runs everything; cached task graph |
 | Tests | **Vitest** (unit), **Testcontainers** (integration, M3), **Playwright** (E2E, M4) | Fast unit cycle; real Postgres in integration; true E2E |
@@ -105,8 +105,8 @@ Full rationale lives in the design spec §3–§10 and will be captured as ADRs 
 | M1 | Foundation + domain state machine | Monorepo, config package, order state machine + 18 tests | ✅ **Done** |
 | M2 | Data layer | Postgres schema + migrations, Hasura tracking + relationships, seed, Docker Compose, smoke test | ✅ **Done** |
 | M3 | Workflow service | NestJS service, Hasura Actions (sync transitions), Event Triggers (async side effects), idempotency, Testcontainers integration tests | ✅ **Done** |
-| M4 | Auth + dashboard | Keycloak, JWT→Hasura claims, per-role RBAC permissions, Next.js dashboard, typed GraphQL client, Playwright E2E | ⏳ **Next** |
-| M5 | Observability + CI + k8s | Logging/metrics/tracing/Grafana, GitHub Actions CI, Helm + kind deploy, README + ADRs | ☐ Planned |
+| M4 | Auth + dashboard | Keycloak, JWT→Hasura claims, per-role RBAC permissions, Next.js dashboard, typed GraphQL client, Playwright E2E | ✅ **Done** |
+| M5 | Observability + CI + k8s | Logging/metrics/tracing/Grafana, GitHub Actions CI, Helm + kind deploy, README + ADRs | ⏳ **Next** |
 | P2 | Production-shaped | Terraform → GKE, HPA, NetworkPolicy, alerting, CD | ☐ Future |
 | P3 | Depth flourishes | Inventory service, SLOs, k6 load tests, canary rollout | ☐ Future (optional) |
 
@@ -115,9 +115,11 @@ relationships, subscriptions), and the **workflow service** — `placeOrder` and
 `transitionOrder` run through Hasura Actions into NestJS, which applies the state machine,
 writes the audit event, and reserves stock atomically; an async Event Trigger fires back
 into the service on every `order_events` insert (idempotent). Verified end-to-end via the
-running stack. **Not yet built:** authentication and per-role SELECT permissions (M4) —
-reads still use the Hasura admin secret, and the actor role is supplied via the
-`x-hasura-role` header (Keycloak JWT supplies it in M4). No UI yet (M4).
+running stack, plus real authentication and a dashboard: Keycloak (OIDC) issues JWTs,
+Hasura enforces per-role row-level permissions from the claims, and the Next.js
+dashboard (personas cara/otto/ada, password `demo1234`) drives the whole lifecycle.
+Playwright E2E covers the full flow and RBAC isolation. **Not yet built:**
+observability, CI, deployment (M5+); dashboard not yet containerized (M5).
 
 ## 6. Repository structure
 
@@ -201,7 +203,7 @@ use `applyTransition` for authorization.
   id). Note: because it's a DB-level trigger, the service's own direct-SQL inserts fire it too.
 
 ### Integrations (planned)
-- **Keycloak JWKS → Hasura** (JWT validation), **Keycloak claims → Hasura RBAC** (M4).
+- **Keycloak JWKS → Hasura** (JWT validation) and **claims_map → Hasura RBAC** — live since M4: allowed roles from realm roles, default role from a `hasura_default_role` user attribute, user id from `sub` (Keycloak user ids are fixed equal to seeded `users.id`).
 
 ## 8. Infrastructure, deployment, CI/CD & environment
 
@@ -218,9 +220,9 @@ use `applyTransition` for authorization.
 ## 9. Known limitations, tech debt, pending tasks & future enhancements
 
 **Current limitations (by design, not bugs):**
-- No authentication or per-role SELECT permissions — reads use the admin secret and the
-  actor role is passed via the `x-hasura-role` header (Keycloak JWT supplies it in M4).
-- No UI (M4). No observability, CI, or deployment yet (M5+).
+- No observability, CI, or deployment yet (M5+); the dashboard runs via `pnpm dev`
+  (containerized in M5). No token-refresh flow (60-min dev token lifespan; sign in again).
+- Realtime subscriptions deferred — the dashboard refetches after mutations.
 
 **Known quirks:**
 - First `make up` logs transient `Inconsistent Metadata!` warnings (the `cli-migrations-v3`
@@ -280,16 +282,18 @@ secrets via Kubernetes `Secret`s. See spec §5.
 
 ## 12. Recommended next steps & roadmap
 
-**Immediate next (M3 — Workflow Service):**
-1. Scaffold `apps/workflow-service` (NestJS) consuming `@ecommerce-orderflow/domain`.
-2. Implement transition endpoints and wire them as **Hasura Actions** (sync).
-3. Implement **Event Trigger** handlers (audit write, stock decrement, notification stub)
-   with idempotency keyed on the Hasura event id; transition + audit write in one DB tx.
-4. zod validation at Action/Event boundaries; typed → structured Action errors.
-5. Testcontainers integration tests against real Postgres.
+**Immediate next (M5 — Observability + CI + Kubernetes):**
+1. Structured logging (pino → Loki) with correlation ids across Hasura → service.
+2. Prometheus metrics (RED + domain: orders by state, transition counts) and
+   OpenTelemetry traces (dashboard → Hasura → Action → service → Postgres) → Tempo;
+   one provisioned Grafana with a committed dashboard JSON.
+3. GitHub Actions CI: lint + typecheck + unit/integration (Testcontainers) → build
+   images (incl. the dashboard) → push GHCR → E2E against the composed stack;
+   Hasura migrations/metadata applied in CI.
+4. Helm chart + kind deploy (probes, resource limits, NetworkPolicy, HPA).
+5. ADRs in docs/adr/ + README architecture GIF.
 
-**Then:** M4 (auth + RBAC + dashboard + E2E) → M5 (observability + CI + kind/Helm + ADRs)
-→ Phase 2 (Terraform/GKE, production-shaped) → Phase 3 (optional depth).
+**Then:** Phase 2 (Terraform → GKE, production-shaped) → Phase 3 (optional depth).
 
 **Process note for contributors (human or AI):** this project follows a
 spec → plan → execute flow. Each milestone gets a plan in `docs/superpowers/plans/`
@@ -299,6 +303,10 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-20** — M4 completed: Keycloak realm (fixed user ids = seeded users.id),
+  Hasura JWT claims_map + per-role select permissions on all tables,
+  `packages/graphql-client` (codegen), Next.js dashboard with role-derived action
+  buttons and federated logout, Playwright E2E (lifecycle + RBAC isolation).
 - **2026-07-18** — M3 (Order Workflow Service) completed: NestJS actions + async event
   trigger, transactional transitions with audit + atomic stock reservation, idempotency,
   Testcontainers integration tests; verified end-to-end in the running stack. Fixed a
