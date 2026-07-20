@@ -1,2 +1,2 @@
-export * from "./gql/graphql.js";
-export { graphql } from "./gql/gql.js";
+export * from "./gql/graphql";
+export { graphql } from "./gql/gql";

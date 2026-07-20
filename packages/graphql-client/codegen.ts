@@ -17,7 +17,6 @@ const config: CodegenConfig = {
       preset: "client",
       config: {
         scalars: { uuid: "string", timestamptz: "string", numeric: "number" },
-        documentMode: "string",
       },
     },
   },
