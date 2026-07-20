@@ -20,3 +20,18 @@ array_relationships:
         table:
           name: order_events
           schema: public
+select_permissions:
+  - role: customer
+    permission:
+      columns: [id, customer_id, status, total_cents, created_at, updated_at]
+      filter:
+        customer_id:
+          _eq: X-Hasura-User-Id
+  - role: ops
+    permission:
+      columns: [id, customer_id, status, total_cents, created_at, updated_at]
+      filter: {}
+  - role: admin
+    permission:
+      columns: [id, customer_id, status, total_cents, created_at, updated_at]
+      filter: {}

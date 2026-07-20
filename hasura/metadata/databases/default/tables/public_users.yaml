@@ -9,3 +9,18 @@ array_relationships:
         table:
           name: orders
           schema: public
+select_permissions:
+  - role: customer
+    permission:
+      columns: [id, email, display_name, role]
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
+  - role: ops
+    permission:
+      columns: [id, email, display_name, role, created_at]
+      filter: {}
+  - role: admin
+    permission:
+      columns: [id, keycloak_id, email, display_name, role, created_at]
+      filter: {}
