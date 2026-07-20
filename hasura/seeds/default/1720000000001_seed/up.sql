@@ -1,7 +1,7 @@
 insert into users (id, keycloak_id, email, display_name, role) values
-  ('11111111-1111-1111-1111-111111111111', null, 'admin@ecommerce-orderflow.dev',    'Ada Admin',      'admin'),
-  ('22222222-2222-2222-2222-222222222222', null, 'ops@ecommerce-orderflow.dev',      'Otto Ops',       'ops'),
-  ('33333333-3333-3333-3333-333333333333', null, 'customer@ecommerce-orderflow.dev', 'Cara Customer',  'customer')
+  ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'admin@ecommerce-orderflow.dev',    'Ada Admin',      'admin'),
+  ('22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', 'ops@ecommerce-orderflow.dev',      'Otto Ops',       'ops'),
+  ('33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 'customer@ecommerce-orderflow.dev', 'Cara Customer',  'customer')
 on conflict (id) do nothing;
 
 insert into products (id, sku, name, description, unit_price_cents, stock_qty) values

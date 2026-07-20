@@ -39,11 +39,32 @@ services:
       timeout: 5s
       retries: 20
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ../keycloak/realm-ecommerce-orderflow.json:/opt/keycloak/data/import/realm-ecommerce-orderflow.json:ro
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /realms/ecommerce-orderflow HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q '200'"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
   hasura:
     image: hasura/graphql-engine:v2.42.0.cli-migrations-v3
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -55,6 +76,12 @@ services:
       PG_DATABASE_URL: ${PG_DATABASE_URL}
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
       ACTION_SECRET: ${ACTION_SECRET}
+      HASURA_GRAPHQL_JWT_SECRET: >-
+        {"jwk_url":"http://keycloak:8080/realms/ecommerce-orderflow/protocol/openid-connect/certs",
+         "claims_map":{
+           "x-hasura-allowed-roles":{"path":"$.realm_access.roles"},
+           "x-hasura-default-role":{"path":"$.hasura_default_role"},
+           "x-hasura-user-id":{"path":"$.sub"}}}
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
