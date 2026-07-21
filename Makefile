@@ -1,7 +1,8 @@
 COMPOSE := docker compose --env-file .env -f infra/docker/compose.yaml
+COMPOSE_OBS := docker compose --env-file .env -f infra/docker/compose.yaml -f infra/docker/compose.observability.yaml
 PSQL := $(COMPOSE) exec -T postgres psql -U $$(grep POSTGRES_USER .env | cut -d= -f2) -d $$(grep POSTGRES_DB .env | cut -d= -f2)
 
-.PHONY: env up down logs seed smoke reset console gen-secrets
+.PHONY: env up down logs seed smoke reset console gen-secrets obs-up obs-down
 
 env:
 	@test -f .env || cp .env.example .env
@@ -38,3 +39,13 @@ smoke:
 
 console:
 	cd hasura && hasura console
+
+# Full stack + observability (Prometheus, Tempo, Grafana). Enables trace export.
+obs-up: env
+	$(COMPOSE_OBS) up -d
+	@echo "Waiting for Hasura to be healthy..."
+	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' ecommerce-orderflow-hasura-1 2>/dev/null)" = "healthy" ]; do sleep 2; done
+	@echo "Up. Grafana: http://localhost:3300  Prometheus: http://localhost:9090"
+
+obs-down:
+	$(COMPOSE_OBS) down

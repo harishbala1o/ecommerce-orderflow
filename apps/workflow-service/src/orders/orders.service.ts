@@ -1,11 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { PoolClient } from "pg";
+import { trace } from "@opentelemetry/api";
 import {
   applyTransition,
   ForbiddenTransitionError,
   InsufficientStockError,
 } from "@ecommerce-orderflow/domain";
 import { OrderRepository } from "../db/order.repository.js";
+import { MetricsService } from "../observability/metrics.service.js";
 import type { PlaceOrderInput, TransitionOrderInput, Session } from "./dto.js";
 import { OrderNotFoundError, UnauthenticatedError, UnknownProductError } from "./errors.js";
 
@@ -14,11 +16,16 @@ export interface OrderResult {
   status: string;
 }
 
+const tracer = trace.getTracer("orderflow.workflow");
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
-  constructor(private readonly repo: OrderRepository) {}
+  constructor(
+    private readonly repo: OrderRepository,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async placeOrder(session: Session, input: PlaceOrderInput): Promise<OrderResult> {
     if (!session.userId) {
@@ -60,48 +67,63 @@ export class OrdersService {
         actorRole: session.role,
       });
 
+      this.metrics.ordersPlaced.inc({ role: session.role });
       this.logger.log(`order ${order.id} placed by ${session.role} (${input.items.length} items)`);
       return { id: order.id, status: order.status };
     });
   }
 
   async transitionOrder(session: Session, input: TransitionOrderInput): Promise<OrderResult> {
-    return this.repo.withTransaction(async (client) => {
-      const order = await this.repo.getOrderForUpdate(client, input.orderId);
-      if (!order) {
-        throw new OrderNotFoundError(input.orderId);
+    return tracer.startActiveSpan("order.transition", async (span) => {
+      span.setAttributes({ "order.id": input.orderId, "order.action": input.action, "actor.role": session.role });
+      try {
+        return await this.repo.withTransaction(async (client) => {
+          const order = await this.repo.getOrderForUpdate(client, input.orderId);
+          if (!order) {
+            throw new OrderNotFoundError(input.orderId);
+          }
+          // Ownership: a customer may only act on their own order.
+          if (session.role === "customer" && order.customer_id !== session.userId) {
+            throw new ForbiddenTransitionError(session.role, input.action, order.status);
+          }
+
+          // Domain gate: legal transition + role permission (throws on violation).
+          const result = applyTransition({
+            current: order.status,
+            action: input.action,
+            role: session.role,
+          });
+
+          // Stock is reserved atomically on confirmation.
+          if (input.action === "confirm") {
+            await this.reserveStock(client, order.id);
+          }
+
+          await this.repo.updateStatus(client, order.id, result.to);
+          await this.repo.insertEvent(client, {
+            orderId: order.id,
+            fromStatus: result.from,
+            toStatus: result.to,
+            action: input.action,
+            actorId: session.userId ?? null,
+            actorRole: session.role,
+          });
+
+          this.metrics.transitions.inc({
+            action: input.action,
+            from: result.from,
+            to: result.to,
+            role: session.role,
+          });
+          span.setAttribute("order.to", result.to);
+          this.logger.log(
+            `order ${order.id}: ${result.from} -> ${result.to} via ${input.action} by ${session.role}`,
+          );
+          return { id: order.id, status: result.to };
+        });
+      } finally {
+        span.end();
       }
-      // Ownership: a customer may only act on their own order.
-      if (session.role === "customer" && order.customer_id !== session.userId) {
-        throw new ForbiddenTransitionError(session.role, input.action, order.status);
-      }
-
-      // Domain gate: legal transition + role permission (throws on violation).
-      const result = applyTransition({
-        current: order.status,
-        action: input.action,
-        role: session.role,
-      });
-
-      // Stock is reserved atomically on confirmation.
-      if (input.action === "confirm") {
-        await this.reserveStock(client, order.id);
-      }
-
-      await this.repo.updateStatus(client, order.id, result.to);
-      await this.repo.insertEvent(client, {
-        orderId: order.id,
-        fromStatus: result.from,
-        toStatus: result.to,
-        action: input.action,
-        actorId: session.userId ?? null,
-        actorRole: session.role,
-      });
-
-      this.logger.log(
-        `order ${order.id}: ${result.from} -> ${result.to} via ${input.action} by ${session.role}`,
-      );
-      return { id: order.id, status: result.to };
     });
   }
 

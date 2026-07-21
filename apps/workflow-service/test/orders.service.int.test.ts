@@ -10,6 +10,7 @@ import {
 } from "@ecommerce-orderflow/domain";
 import { OrderRepository } from "../src/db/order.repository.js";
 import { OrdersService } from "../src/orders/orders.service.js";
+import { MetricsService } from "../src/observability/metrics.service.js";
 import type { Session } from "../src/orders/dto.js";
 
 // Testcontainers' resource reaper is unnecessary here and can be flaky in CI.
@@ -63,7 +64,7 @@ beforeAll(async () => {
   );
 
   repo = new OrderRepository(pool);
-  service = new OrdersService(repo);
+  service = new OrdersService(repo, new MetricsService());
 }, 120_000);
 
 afterAll(async () => {

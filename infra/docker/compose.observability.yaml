@@ -1,0 +1,47 @@
+# Observability overlay. Use together with compose.yaml:
+#   docker compose -f infra/docker/compose.yaml -f infra/docker/compose.observability.yaml up -d
+# (or `make obs-up`). Adds Prometheus + Tempo + Grafana and turns on trace export
+# from the workflow service.
+
+services:
+  workflow-service:
+    environment:
+      DATABASE_URL: ${PG_DATABASE_URL}
+      PORT: "3001"
+      ACTION_SECRET: ${ACTION_SECRET}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_SERVICE_NAME: workflow-service
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    volumes:
+      - ../../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ../../observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - ../../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3300:3000"
+    depends_on:
+      - prometheus
+      - tempo
