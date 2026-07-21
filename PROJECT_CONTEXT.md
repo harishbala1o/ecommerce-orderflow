@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** M4 complete, M5 next.
+> **Last updated:** 2026-07-20 · **Current milestone:** M5a (observability) complete; M5b CI next.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -303,6 +303,11 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-20 (M5a)** — Observability: workflow service exposes Prometheus /metrics
+  (RED + domain counters), emits OpenTelemetry traces (auto HTTP/pg + manual
+  order.transition span) to Tempo, and logs structured pino JSON with trace_id.
+  `make obs-up` runs Prometheus + Tempo + Grafana with a provisioned dashboard.
+  Verified end-to-end (metrics scraped, dashboard live, traces in Tempo).
 - **2026-07-20** — M4 completed: Keycloak realm (fixed user ids = seeded users.id),
   Hasura JWT claims_map + per-role select permissions on all tables,
   `packages/graphql-client` (codegen), Next.js dashboard with role-derived action

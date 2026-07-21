@@ -13,6 +13,7 @@ backend, DevOps, cloud, and observability engineering.
 - **M2 — Data layer (Postgres + Hasura)** ✅
 - **M3 — Order Workflow Service (NestJS actions + events)** ✅
 - **M4 — Auth (Keycloak + JWT RBAC) + dashboard (Next.js) + E2E** ✅
+- **M5a — Observability (Prometheus metrics, OpenTelemetry traces, Grafana)** ✅
 
 ## Development
 
@@ -77,6 +78,24 @@ Business operations go through the NestJS service, the only writer of order stat
 Illegal or unauthorized transitions return a structured error
 (`{ message, extensions: { code } }`); each transition writes an append-only
 `order_events` audit row and fires an async event trigger back into the service.
+
+## Observability
+
+```bash
+make obs-up   # full stack + Prometheus, Tempo, Grafana; enables trace export
+```
+
+- **Grafana** (anonymous, dev): http://localhost:3300 → dashboard *OrderFlow — Service & Domain*
+- **Prometheus**: http://localhost:9090 · **Tempo** (traces): queried via Grafana
+
+Three pillars, correlated:
+- **Metrics** — the workflow service exposes `/metrics`: RED (request rate, p95
+  latency, error rate by route) plus **domain metrics** (`orderflow_transitions_total`
+  by action/from/to/role, `orderflow_orders_placed_total`).
+- **Traces** — OpenTelemetry auto-instruments HTTP/Express/pg, with a manual
+  `order.transition` span, exported to Tempo. One trace spans Action → service → Postgres.
+- **Logs** — structured pino JSON carrying the active `trace_id`, so a log line links
+  to its trace.
 
 ## End-to-end tests
 
