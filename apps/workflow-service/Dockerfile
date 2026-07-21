@@ -13,6 +13,9 @@ RUN pnpm install --frozen-lockfile \
 FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app ./
+# Run as the unprivileged `node` user that the base image already provides,
+# so a container escape does not start from root.
+COPY --from=build --chown=node:node /app ./
+USER node
 EXPOSE 3001
 CMD ["node", "dist/main.js"]

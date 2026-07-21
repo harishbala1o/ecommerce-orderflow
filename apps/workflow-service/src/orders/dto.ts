@@ -10,14 +10,17 @@ export const orderActionSchema = z.enum([
 ]);
 
 export const placeOrderSchema = z.object({
+  // Bounded to keep a single order's work (and its transaction) small and
+  // predictable; these are generous limits, not business rules.
   items: z
     .array(
       z.object({
         productId: z.string().uuid(),
-        quantity: z.number().int().positive(),
+        quantity: z.number().int().positive().max(1000),
       }),
     )
-    .nonempty(),
+    .nonempty()
+    .max(100),
 });
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 

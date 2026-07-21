@@ -1,10 +1,19 @@
 COMPOSE := docker compose --env-file .env -f infra/docker/compose.yaml
 PSQL := $(COMPOSE) exec -T postgres psql -U $$(grep POSTGRES_USER .env | cut -d= -f2) -d $$(grep POSTGRES_DB .env | cut -d= -f2)
 
-.PHONY: env up down logs seed smoke reset console
+.PHONY: env up down logs seed smoke reset console gen-secrets
 
 env:
 	@test -f .env || cp .env.example .env
+
+# Print cryptographically-random secrets to paste into a deployment's .env.
+# (Dev uses the checked-in defaults; never deploy with those.)
+gen-secrets:
+	@echo "HASURA_GRAPHQL_ADMIN_SECRET=$$(openssl rand -base64 32)"
+	@echo "ACTION_SECRET=$$(openssl rand -base64 32)"
+	@echo "POSTGRES_PASSWORD=$$(openssl rand -base64 24)"
+	@echo "KEYCLOAK_ADMIN_PASSWORD=$$(openssl rand -base64 24)"
+	@echo "NEXTAUTH_SECRET=$$(openssl rand -base64 32)  # apps/web/.env.local"
 
 up: env
 	$(COMPOSE) up -d

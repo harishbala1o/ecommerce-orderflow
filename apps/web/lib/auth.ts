@@ -2,13 +2,12 @@ import type { AuthOptions } from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import type { Role } from "@ecommerce-orderflow/domain";
 
-function decodeRole(accessToken: string): Role {
-  const payload = accessToken.split(".")[1] ?? "";
-  const claims = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-    hasura_default_role?: Role;
-  };
-  return claims.hasura_default_role ?? "customer";
-}
+// The role is a UI hint only: it decides which action buttons render. The real
+// security boundary is Hasura (verifies the JWT via Keycloak JWKS) and the
+// workflow service (re-derives the actor from Hasura-forwarded claims). We take
+// the role from next-auth's `profile`, i.e. the ID-token claims next-auth has
+// already validated during the OIDC handshake — never by hand-parsing a token.
+type KeycloakProfile = { hasura_default_role?: Role };
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -22,10 +21,10 @@ export const authOptions: AuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   callbacks: {
-    jwt({ token, account }) {
+    jwt({ token, account, profile }) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
-        token.role = decodeRole(account.access_token);
+        token.role = (profile as KeycloakProfile | undefined)?.hasura_default_role ?? "customer";
         token.idToken = account.id_token;
       }
       return token;
