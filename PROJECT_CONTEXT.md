@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** M5a (observability) complete; M5b CI next.
+> **Last updated:** 2026-07-20 · **Current milestone:** M5a+M5b complete; M5c (Kubernetes) next.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -303,6 +303,10 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-20 (M5b)** — CI on GitHub Actions: ci.yaml (lint/typecheck/unit +
+  Testcontainers integration) green on PRs and main; images.yaml builds & pushes the
+  workflow-service image to GHCR; e2e.yaml (manual) runs full-stack Playwright.
+  CI badge added. Verified green on GitHub.
 - **2026-07-20 (M5a)** — Observability: workflow service exposes Prometheus /metrics
   (RED + domain counters), emits OpenTelemetry traces (auto HTTP/pg + manual
   order.transition span) to Tempo, and logs structured pino JSON with trace_id.

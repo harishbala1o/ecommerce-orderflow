@@ -16,6 +16,7 @@ backend, DevOps, cloud, and observability engineering.
 - **M3 — Order Workflow Service (NestJS actions + events)** ✅
 - **M4 — Auth (Keycloak + JWT RBAC) + dashboard (Next.js) + E2E** ✅
 - **M5a — Observability (Prometheus metrics, OpenTelemetry traces, Grafana)** ✅
+- **M5b — CI (GitHub Actions: quality gate, image publish to GHCR, E2E)** ✅
 
 ## Development
 
