@@ -45,6 +45,10 @@ The *why* behind each major choice is recorded as [Architecture Decision Records
 - **M4 — Auth (Keycloak + JWT RBAC) + dashboard (Next.js) + E2E** ✅
 - **M5a — Observability (Prometheus metrics, OpenTelemetry traces, Grafana)** ✅
 - **M5b — CI (GitHub Actions: quality gate, image publish to GHCR, E2E)** ✅
+- **M5c — Kubernetes (Helm chart + kind, HPA/NetworkPolicy, prod overlay)** ✅
+- **M5d — ADRs + architecture docs** ✅
+
+**Phase 1 complete.**
 
 ## Development
 

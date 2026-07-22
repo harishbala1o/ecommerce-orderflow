@@ -1,0 +1,6 @@
+apiVersion: v2
+name: orderflow
+description: Ecommerce OrderFlow — order management platform (Hasura, NestJS, Keycloak, Next.js)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

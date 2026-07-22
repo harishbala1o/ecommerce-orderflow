@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** M5a/M5b/M5d complete; M5c (Kubernetes) next.
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 complete (M1–M5). Phase 2 (Terraform→GKE) is the next arc.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -303,6 +303,12 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-20 (M5c)** — Helm chart (infra/helm/orderflow) for all services with dev
+  defaults + values-prod.yaml hardening overlay (DEV_MODE off, console off, CORS locked,
+  external DB, secrets from an existing Secret); custom Hasura image bakes migrations+
+  metadata for in-cluster apply; HPA + NetworkPolicy + probes/resources. helm lint clean,
+  both overlays render, core path (Postgres+Hasura+workflow-service) verified live on kind.
+  **Phase 1 complete.**
 - **2026-07-20 (M5d)** — Architecture Decision Records added under docs/adr/ (6 ADRs
   covering the Hasura+service split, sync/async, NestJS, Keycloak, sole-writer+audit,
   and observability); README gained an architecture section + ADR pointer.

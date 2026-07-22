@@ -1,0 +1,34 @@
+# Production hardening overlay. Apply with:
+#   helm install orderflow infra/helm/orderflow -f infra/helm/orderflow/values-prod.yaml
+# Realizes the hardening items from SECURITY.md.
+
+images:
+  pullPolicy: Always
+
+# Secrets are provisioned out-of-band; the chart does not template them.
+secrets:
+  create: false
+  existingSecret: orderflow-secrets
+
+# Use a managed Postgres in production; do not run the in-cluster dev Postgres.
+postgres:
+  enabled: false
+
+hasura:
+  replicas: 2
+  devMode: false
+  enableConsole: false
+  corsDomain: "https://orderflow.example.com"
+  jwt:
+    enabled: true
+
+workflowService:
+  replicas: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+
+web:
+  replicas: 2
+  publicGraphqlUrl: https://api.orderflow.example.com/v1/graphql

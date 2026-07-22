@@ -1,0 +1,71 @@
+# Default values (dev-oriented, kind-friendly). See values-prod.yaml for the
+# production hardening overlay.
+
+nameOverride: ""
+
+images:
+  hasura: orderflow/hasura:dev
+  workflowService: orderflow/workflow-service:dev
+  web: orderflow/web:dev
+  postgres: postgres:16-alpine
+  keycloak: quay.io/keycloak/keycloak:25.0
+  pullPolicy: IfNotPresent
+
+# Dev secrets live in a chart-managed Secret. In prod set create=false and point
+# existingSecret at a Secret provisioned out-of-band (sealed-secrets / a manager).
+secrets:
+  create: true
+  existingSecret: ""
+  adminSecret: ecommerce_orderflow_dev_admin_secret
+  actionSecret: ecommerce_orderflow_dev_action_secret
+  postgresPassword: ecommerce_orderflow_dev_pw
+  keycloakAdminPassword: kc_dev_admin_pw
+
+postgres:
+  enabled: true # prod: false — use a managed database
+  user: ecommerce_orderflow
+  db: ecommerce_orderflow
+  storage: 1Gi
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }
+
+hasura:
+  replicas: 1
+  devMode: true # prod: false
+  enableConsole: true # prod: false
+  corsDomain: "*" # prod: the dashboard origin
+  jwt:
+    enabled: true # requires keycloak; disable for an admin-secret-only smoke test
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+workflowService:
+  replicas: 2
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: "500m", memory: 256Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 75
+  networkPolicy:
+    enabled: true # only Hasura may reach the service
+
+keycloak:
+  enabled: true
+  adminUser: admin
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+web:
+  enabled: true
+  replicas: 1
+  nextauthSecret: dev_nextauth_secret_change_me
+  publicGraphqlUrl: http://localhost:8080/v1/graphql
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: "500m", memory: 256Mi }
