@@ -9,6 +9,34 @@ backend, DevOps, cloud, and observability engineering.
 > truth for architecture, decisions, status, and how to continue. The full design
 > spec lives in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
+## Architecture
+
+```
+                         ┌──────────────────────────┐
+   Browser ── Next.js ───┤  Keycloak (OIDC) → JWT    │  role claims in JWT
+   dashboard             └──────────────────────────┘
+        │ GraphQL (JWT bearer)
+        ▼
+   ┌─────────────┐   Actions (sync mutations)   ┌──────────────────────┐
+   │   Hasura    │ ───────────────────────────▶ │  Order Workflow Svc  │
+   │  (GraphQL,  │   Event Triggers (async)      │      (NestJS)        │
+   │  subs, RBAC)│ ◀──────────────────────────── │  • state machine     │
+   └──────┬──────┘                                │  • validation        │
+          │ SQL                                   │  • audit + metrics   │
+          ▼                                       └──────────┬───────────┘
+   ┌─────────────┐                                           │ writes
+   │  Postgres   │ ◀─────────────────────────────────────────┘
+   └─────────────┘
+```
+
+**Reads** go straight through Hasura (row-level RBAC from JWT claims). **Business
+operations** go through the workflow service — the sole writer of order state — as
+synchronous Hasura Actions, with retryable side effects driven by asynchronous Event
+Triggers. The order state machine lives in a framework-agnostic package shared by the
+service and the dashboard.
+
+The *why* behind each major choice is recorded as [Architecture Decision Records](docs/adr/).
+
 ## Status
 
 - **M1 — Monorepo foundation + domain state machine** ✅

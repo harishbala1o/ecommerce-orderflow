@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** M5a+M5b complete; M5c (Kubernetes) next.
+> **Last updated:** 2026-07-20 · **Current milestone:** M5a/M5b/M5d complete; M5c (Kubernetes) next.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -77,7 +77,7 @@ the heart of the project.
 5. **TypeScript end-to-end**, monorepo (pnpm + Turborepo), TDD, frequent small commits.
 
 Full rationale lives in the design spec §3–§10 and will be captured as ADRs under
-`docs/adr/` (planned, M5).
+`docs/adr/` (see the ADR index there).
 
 ## 4. Tech stack & rationale
 
@@ -303,6 +303,9 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-20 (M5d)** — Architecture Decision Records added under docs/adr/ (6 ADRs
+  covering the Hasura+service split, sync/async, NestJS, Keycloak, sole-writer+audit,
+  and observability); README gained an architecture section + ADR pointer.
 - **2026-07-20 (M5b)** — CI on GitHub Actions: ci.yaml (lint/typecheck/unit +
   Testcontainers integration) green on PRs and main; images.yaml builds & pushes the
   workflow-service image to GHCR; e2e.yaml (manual) runs full-stack Playwright.
