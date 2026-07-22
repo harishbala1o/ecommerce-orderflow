@@ -1,5 +1,7 @@
 # Ecommerce OrderFlow
 
+[![CI](https://github.com/harishbala1o/ecommerce-orderflow/actions/workflows/ci.yaml/badge.svg)](https://github.com/harishbala1o/ecommerce-orderflow/actions/workflows/ci.yaml)
+
 An e-commerce **order management** platform, built from scratch to demonstrate
 backend, DevOps, cloud, and observability engineering.
 
