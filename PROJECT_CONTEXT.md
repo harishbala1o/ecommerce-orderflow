@@ -220,8 +220,7 @@ use `applyTransition` for authorization.
 ## 9. Known limitations, tech debt, pending tasks & future enhancements
 
 **Current limitations (by design, not bugs):**
-- No observability, CI, or deployment yet (M5+); the dashboard runs via `pnpm dev`
-  (containerized in M5). No token-refresh flow (60-min dev token lifespan; sign in again).
+- The dashboard runs via `pnpm dev` locally (a production image + Helm deploy exist in M5c).
 - Realtime subscriptions deferred — the dashboard refetches after mutations.
 
 **Known quirks:**
@@ -303,6 +302,10 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-22 (fix)** — Dashboard now refreshes the Keycloak access token via the
+  refresh token in the next-auth jwt callback; when the refresh token is also expired it
+  forces a clean re-login. Fixes a stale-session state where an expired access token was
+  sent to Hasura ("Could not verify JWT: JWTExpired") while the app still looked logged in.
 - **2026-07-20 (M5c)** — Helm chart (infra/helm/orderflow) for all services with dev
   defaults + values-prod.yaml hardening overlay (DEV_MODE off, console off, CORS locked,
   external DB, secrets from an existing Secret); custom Hasura image bakes migrations+

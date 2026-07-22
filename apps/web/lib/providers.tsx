@@ -1,12 +1,21 @@
 "use client";
 
-import { SessionProvider, useSession } from "next-auth/react";
+import { SessionProvider, useSession, signIn } from "next-auth/react";
 import { Provider as UrqlProvider, Client, cacheExchange, fetchExchange } from "urql";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 function GraphqlProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
   const token = session?.accessToken;
+
+  // When the refresh token is gone (idle past its lifetime), the access token
+  // can no longer be renewed. Rather than send a dead token to Hasura, bounce
+  // the user through Keycloak for a clean re-login.
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      void signIn("keycloak");
+    }
+  }, [session?.error]);
 
   const client = useMemo(
     () =>

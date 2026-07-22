@@ -7,13 +7,17 @@ declare module "next-auth" {
     role: Role;
     userId: string;
     idToken: string;
+    error?: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
-    role?: Role;
+    refreshToken?: string;
     idToken?: string;
+    expiresAt?: number;
+    role?: Role;
+    error?: string;
   }
 }
