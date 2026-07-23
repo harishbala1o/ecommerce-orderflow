@@ -1,19 +1,23 @@
 "use client";
 
-import { SessionProvider, useSession, signIn } from "next-auth/react";
+import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { Provider as UrqlProvider, Client, cacheExchange, fetchExchange } from "urql";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 
 function GraphqlProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
   const token = session?.accessToken;
 
-  // When the refresh token is gone (idle past its lifetime), the access token
-  // can no longer be renewed. Rather than send a dead token to Hasura, bounce
-  // the user through Keycloak for a clean re-login.
+  // When the refresh token is also expired the access token can no longer be
+  // renewed. Clear the dead session (signOut) and return to /login, where the
+  // user signs in fresh. We must NOT auto-signIn here: that keeps the errored
+  // cookie alive and loops. signOut removes the cookie, so the error clears and
+  // the effect can't re-fire. A ref guards against a double-invoke.
+  const handledError = useRef(false);
   useEffect(() => {
-    if (session?.error === "RefreshAccessTokenError") {
-      void signIn("keycloak");
+    if (session?.error === "RefreshAccessTokenError" && !handledError.current) {
+      handledError.current = true;
+      void signOut({ callbackUrl: "/login" });
     }
   }, [session?.error]);
 
