@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+project_id  = "your-gcp-project-id"
+region      = "us-central1"
+environment = "prod"
+
+# Cheapest tiers for a demo; raise for real workloads.
+db_tier = "db-g1-small"

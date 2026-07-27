@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 complete (M1–M5). Phase 2 (Terraform→GKE) is the next arc.
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 complete; Phase 2 Terraform (GKE) authored + validated (apply pending user's GCP creds).
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -302,6 +302,12 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-27 (Phase 2 IaC)** — Terraform under infra/terraform for a GKE deployment:
+  VPC, GKE Autopilot, Cloud SQL Postgres (private IP), Artifact Registry, Secret Manager,
+  and a Workload Identity SA. `terraform validate` clean + fmt + a terraform CI workflow;
+  not applied (needs GCP creds). Apply runbook in infra/terraform/README.md.
+- **2026-07-27 (fix)** — Login reliability: dev server run as a durable background process;
+  confirmed stale-session sign-out + fresh-login flow works end to end (clock-sync verified).
 - **2026-07-22 (fix)** — Dashboard now refreshes the Keycloak access token via the
   refresh token in the next-auth jwt callback; when the refresh token is also expired it
   forces a clean re-login. Fixes a stale-session state where an expired access token was
