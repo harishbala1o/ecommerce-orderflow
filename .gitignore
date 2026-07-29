@@ -17,3 +17,6 @@ playwright-report/
 terraform.tfvars
 *.tfvars.json
 crash.log
+
+# Local-only external scan report (not part of the repo)
+SECURITY_ASSESSMENT_REPORT.md
