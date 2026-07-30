@@ -5,9 +5,11 @@
 An e-commerce **order management** platform, built from scratch to demonstrate
 backend, DevOps, cloud, and observability engineering.
 
-> **New here?** Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) — the single source of
-> truth for architecture, decisions, status, and how to continue. The full design
-> spec lives in [`docs/superpowers/specs/`](docs/superpowers/specs/).
+> **New here?** Start with the **[Architecture and Onboarding Guide](docs/ARCHITECTURE.md)**:
+> a visual, beginner-friendly walkthrough of every component, the full request lifecycle,
+> project status, the test plan, and a step-by-step Google Cloud deployment guide.
+> [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) is the short status and handover note, and the
+> design spec lives in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
 ## Architecture
 

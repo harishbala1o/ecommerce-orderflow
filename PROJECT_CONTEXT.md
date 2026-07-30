@@ -5,6 +5,9 @@
 >
 > **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs+alerting done. Further Phase 3 items optional.
 >
+> **Visual architecture guide:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
+> diagrams, the request lifecycle, the test plan, and the Google Cloud deployment guide.
+>
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
 > the spec/plans for detail rather than duplicating them.
@@ -302,6 +305,12 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-30 (docs)** — Added docs/ARCHITECTURE.md: a visual architecture and onboarding
+  guide written for readers new to software engineering. 14 validated mermaid diagrams
+  (system overview, request path, observability, data model, state machine, four request
+  flows, three deployment topologies, CI/CD, roadmap), a component reference, project
+  status with features remaining and known limitations, a full test gap analysis, and a
+  step-by-step Google Cloud deployment guide with troubleshooting.
 - **2026-07-27 (Phase 3: SLOs)** — Availability (99.5%) + latency (95%<0.5s) SLOs as
   Prometheus recording rules; multi-window multi-burn-rate alerts + Alertmanager; a Grafana
   error-budget dashboard. Request-outcome metric now distinguishes ok/client_error/
