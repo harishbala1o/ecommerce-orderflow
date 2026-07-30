@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 complete; Phase 2 Terraform (GKE) authored + validated (apply pending user's GCP creds).
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs+alerting done. Further Phase 3 items optional.
 >
 > **How to maintain this doc:** update the *Status* table and *Changelog* whenever a
 > milestone lands or a significant decision changes. Keep sections concise — link to
@@ -302,6 +302,11 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-07-27 (Phase 3: SLOs)** — Availability (99.5%) + latency (95%<0.5s) SLOs as
+  Prometheus recording rules; multi-window multi-burn-rate alerts + Alertmanager; a Grafana
+  error-budget dashboard. Request-outcome metric now distinguishes ok/client_error/
+  server_error so business rejections don't burn the budget. Verified: promtool clean,
+  rules loaded, SLIs at 100%, Alertmanager wired, dashboard renders. See docs/slo.md.
 - **2026-07-27 (Phase 2 IaC)** — Terraform under infra/terraform for a GKE deployment:
   VPC, GKE Autopilot, Cloud SQL Postgres (private IP), Artifact Registry, Secret Manager,
   and a Workload Identity SA. `terraform validate` clean + fmt + a terraform CI workflow;

@@ -120,8 +120,8 @@ Illegal or unauthorized transitions return a structured error
 make obs-up   # full stack + Prometheus, Tempo, Grafana; enables trace export
 ```
 
-- **Grafana** (anonymous, dev): http://localhost:3300 → dashboard *OrderFlow — Service & Domain*
-- **Prometheus**: http://localhost:9090 · **Tempo** (traces): queried via Grafana
+- **Grafana** (anonymous, dev): http://localhost:3300 → dashboards *OrderFlow — Service & Domain* and *OrderFlow — SLOs & Error Budget*
+- **Prometheus**: http://localhost:9090 · **Alertmanager**: http://localhost:9093 · **Tempo** (traces): via Grafana
 
 Three pillars, correlated:
 - **Metrics** — the workflow service exposes `/metrics`: RED (request rate, p95
@@ -131,6 +131,10 @@ Three pillars, correlated:
   `order.transition` span, exported to Tempo. One trace spans Action → service → Postgres.
 - **Logs** — structured pino JSON carrying the active `trace_id`, so a log line links
   to its trace.
+- **SLOs** — availability (99.5%) and latency (95% < 0.5s) SLIs as Prometheus recording
+  rules, multi-window multi-burn-rate error-budget alerts routed to Alertmanager, and an
+  error-budget Grafana dashboard. Business rejections (forbidden/illegal transitions) are
+  correctly excluded from the availability budget. See [docs/slo.md](docs/slo.md).
 
 ## End-to-end tests
 
