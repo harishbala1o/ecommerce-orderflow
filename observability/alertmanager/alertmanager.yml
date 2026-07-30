@@ -1,0 +1,22 @@
+# Minimal Alertmanager config. Alerts route to the default receiver and are
+# visible in the Alertmanager UI (http://localhost:9093). No external delivery is
+# wired for the demo — plug a Slack/email/webhook config into the receiver below.
+route:
+  receiver: default
+  group_by: ["alertname", "slo"]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: default
+    # Example (fill in and uncomment for real delivery):
+    # slack_configs:
+    #   - api_url: "https://hooks.slack.com/services/XXX"
+    #     channel: "#alerts"
+
+inhibit_rules:
+  # A page silences the lower-severity ticket for the same SLO.
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="ticket"]
+    equal: ["slo"]

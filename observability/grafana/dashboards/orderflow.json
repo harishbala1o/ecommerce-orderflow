@@ -77,8 +77,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (route) (rate(orderflow_action_duration_seconds_count{outcome=\"error\"}[1m]))",
-          "legendFormat": "{{route}}"
+          "expr": "sum by (route, outcome) (rate(orderflow_action_duration_seconds_count{outcome=~\"client_error|server_error\"}[1m]))",
+          "legendFormat": "{{route}} {{outcome}}"
         }
       ]
     }

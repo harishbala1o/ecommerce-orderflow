@@ -1,0 +1,92 @@
+# SLOs for the Order Workflow Service.
+#   Availability SLO: 99.5% of order-action requests are NOT server errors.
+#     (business rejections — forbidden/illegal transitions — are correct 400s and
+#      count as good; only server_error burns the budget.)  Error budget = 0.5%.
+#   Latency SLO:      95% of requests complete in < 0.5s.
+#
+# Alerts use multi-window, multi-burn-rate (Google SRE Workbook): a fast-burn page
+# and a slow-burn ticket, each requiring a long AND a short window to be hot to
+# avoid flapping.
+
+groups:
+  - name: orderflow_sli
+    interval: 15s
+    rules:
+      # --- error ratio (server_error / total) over several windows ---
+      - record: orderflow:error_ratio:5m
+        expr: |
+          sum(rate(orderflow_action_duration_seconds_count{outcome="server_error"}[5m]))
+          /
+          sum(rate(orderflow_action_duration_seconds_count[5m]))
+      - record: orderflow:error_ratio:30m
+        expr: |
+          sum(rate(orderflow_action_duration_seconds_count{outcome="server_error"}[30m]))
+          /
+          sum(rate(orderflow_action_duration_seconds_count[30m]))
+      - record: orderflow:error_ratio:1h
+        expr: |
+          sum(rate(orderflow_action_duration_seconds_count{outcome="server_error"}[1h]))
+          /
+          sum(rate(orderflow_action_duration_seconds_count[1h]))
+      - record: orderflow:error_ratio:6h
+        expr: |
+          sum(rate(orderflow_action_duration_seconds_count{outcome="server_error"}[6h]))
+          /
+          sum(rate(orderflow_action_duration_seconds_count[6h]))
+
+      # --- SLIs for dashboards (fraction good) ---
+      - record: orderflow:availability_sli:30m
+        expr: 1 - (orderflow:error_ratio:30m or vector(0))
+      - record: orderflow:latency_sli:30m
+        expr: |
+          sum(rate(orderflow_action_duration_seconds_bucket{le="0.5"}[30m]))
+          /
+          sum(rate(orderflow_action_duration_seconds_count[30m]))
+
+  - name: orderflow_slo_alerts
+    rules:
+      # Error budget = 0.5%. Burn-rate thresholds = burn_factor * budget.
+      - alert: OrderflowErrorBudgetFastBurn
+        expr: |
+          orderflow:error_ratio:1h > (14.4 * 0.005)
+          and
+          orderflow:error_ratio:5m > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: "Fast error-budget burn on the workflow service"
+          description: "server_error ratio >7.2% over 1h and 5m — ~2% of the 30d budget/hour. Page."
+
+      - alert: OrderflowErrorBudgetSlowBurn
+        expr: |
+          orderflow:error_ratio:6h > (6 * 0.005)
+          and
+          orderflow:error_ratio:30m > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: ticket
+          slo: availability
+        annotations:
+          summary: "Slow error-budget burn on the workflow service"
+          description: "server_error ratio >3% over 6h and 30m — sustained budget drain. Open a ticket."
+
+      - alert: OrderflowLatencySloBreach
+        expr: orderflow:latency_sli:30m < 0.95
+        for: 10m
+        labels:
+          severity: ticket
+          slo: latency
+        annotations:
+          summary: "Latency SLO breached"
+          description: "<95% of requests completed under 0.5s over the last 30m."
+
+      - alert: OrderflowWorkflowServiceDown
+        expr: up{job="workflow-service"} == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Workflow service scrape target is down"
+          description: "Prometheus cannot scrape the workflow service /metrics endpoint."
