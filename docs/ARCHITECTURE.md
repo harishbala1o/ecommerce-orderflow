@@ -365,8 +365,12 @@ checking. There are three:
   neutral colours, a single accent, no decoration that does not carry meaning.
 - **How it communicates:** it sends GraphQL queries to Hasura over HTTPS, attaching the
   JWT on every request. It never talks to the database or the Workflow Service directly.
-- **A detail worth understanding:** the buttons shown on an order (Confirm, Pack, Ship,
-  Cancel, and so on) are **calculated from the same shared state machine the backend
+- **A detail worth understanding:** the order form joins the catalogue to stock
+  availability **in the browser**, because products and stock live in separate databases
+  that cannot be joined in SQL. Hasura returns both in one GraphQL response and the page
+  matches them by product id.
+- **Another detail worth understanding:** the buttons shown on an order (Confirm, Pack,
+  Ship, Cancel, and so on) are **calculated from the same shared state machine the backend
   uses**. The frontend cannot invent an illegal action, and the backend re-checks every
   action anyway. The frontend rule is a convenience; the backend rule is the law.
 
@@ -603,6 +607,12 @@ erDiagram
     stock_items ||--o{ stock_movements : "records"
     stock_items ||--o{ stock_alerts : "raises"
 ```
+
+There is also a **view**, `stock_availability`, exposing only `product_id`, `sku` and
+`available`. It exists so the shop can publish what a customer needs to decide (how many
+are buyable) without revealing operational detail (how many are physically on a shelf versus
+already promised to other orders). Customers may read the view; only ops and admin may read
+`stock_items` itself.
 
 Three details in this model are worth calling out:
 
