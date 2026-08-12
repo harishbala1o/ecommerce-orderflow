@@ -1,13 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { PoolClient } from "pg";
+import { randomUUID } from "node:crypto";
 import { trace } from "@opentelemetry/api";
-import {
-  applyTransition,
-  ForbiddenTransitionError,
-  InsufficientStockError,
-} from "@ecommerce-orderflow/domain";
+import { applyTransition, ForbiddenTransitionError } from "@ecommerce-orderflow/domain";
 import { OrderRepository } from "../db/order.repository.js";
 import { MetricsService } from "../observability/metrics.service.js";
+import { InventoryClient } from "../inventory/inventory.client.js";
 import type { PlaceOrderInput, TransitionOrderInput, Session } from "./dto.js";
 import { OrderNotFoundError, UnauthenticatedError, UnknownProductError } from "./errors.js";
 
@@ -25,8 +22,19 @@ export class OrdersService {
   constructor(
     private readonly repo: OrderRepository,
     private readonly metrics: MetricsService,
+    private readonly inventory: InventoryClient,
   ) {}
 
+  /**
+   * Places an order as a saga across two bounded contexts.
+   *
+   * Stock is held in the inventory service *before* the order is created, so a
+   * customer is told immediately if the goods are unavailable and no order row
+   * is created for something that cannot be fulfilled. The two services own
+   * separate databases, so this cannot be one transaction: if the local write
+   * fails after a successful hold, a compensating release runs, and the
+   * inventory sweeper reclaims the hold if even that does not get through.
+   */
   async placeOrder(session: Session, input: PlaceOrderInput): Promise<OrderResult> {
     if (!session.userId) {
       throw new UnauthenticatedError("placeOrder requires an authenticated user");
@@ -34,42 +42,67 @@ export class OrdersService {
     const userId = session.userId;
     const productIds = input.items.map((i) => i.productId);
 
+    // Price the order first: an unknown product should fail before any stock is held.
+    const { totalCents, priceById } = await this.priceOrder(productIds, input);
+
+    const orderId = randomUUID();
+    await this.inventory.reserve(orderId, input.items);
+
+    let order: OrderResult;
+    try {
+      order = await this.repo.withTransaction(async (client) => {
+        const created = await this.repo.createOrder(client, userId, totalCents, orderId);
+        for (const item of input.items) {
+          await this.repo.insertItem(
+            client,
+            created.id,
+            item.productId,
+            item.quantity,
+            priceById.get(item.productId)!,
+          );
+        }
+        await this.repo.insertEvent(client, {
+          orderId: created.id,
+          fromStatus: null,
+          toStatus: "PENDING",
+          action: "create",
+          actorId: userId,
+          actorRole: session.role,
+        });
+        return { id: created.id, status: created.status };
+      });
+    } catch (err) {
+      await this.inventory.releaseQuietly(orderId);
+      throw err;
+    }
+
+    // The order exists, so the hold is no longer speculative and must not expire.
+    await this.inventory.confirm(orderId);
+
+    this.metrics.ordersPlaced.inc({ role: session.role });
+    this.logger.log(`order ${order.id} placed by ${session.role} (${input.items.length} items)`);
+    return order;
+  }
+
+  /** Resolves catalog prices, capturing them at purchase time. */
+  private async priceOrder(
+    productIds: string[],
+    input: PlaceOrderInput,
+  ): Promise<{ totalCents: number; priceById: Map<string, number> }> {
     return this.repo.withTransaction(async (client) => {
       const products = await this.repo.findProducts(client, productIds);
       const byId = new Map(products.map((p) => [p.id, p]));
-
+      const priceById = new Map<string, number>();
       let totalCents = 0;
       for (const item of input.items) {
         const product = byId.get(item.productId);
         if (!product) {
           throw new UnknownProductError(item.productId);
         }
+        priceById.set(item.productId, product.unit_price_cents);
         totalCents += product.unit_price_cents * item.quantity;
       }
-
-      const order = await this.repo.createOrder(client, userId, totalCents);
-      for (const item of input.items) {
-        const product = byId.get(item.productId)!;
-        await this.repo.insertItem(
-          client,
-          order.id,
-          item.productId,
-          item.quantity,
-          product.unit_price_cents,
-        );
-      }
-      await this.repo.insertEvent(client, {
-        orderId: order.id,
-        fromStatus: null,
-        toStatus: "PENDING",
-        action: "create",
-        actorId: userId,
-        actorRole: session.role,
-      });
-
-      this.metrics.ordersPlaced.inc({ role: session.role });
-      this.logger.log(`order ${order.id} placed by ${session.role} (${input.items.length} items)`);
-      return { id: order.id, status: order.status };
+      return { totalCents, priceById };
     });
   }
 
@@ -93,11 +126,6 @@ export class OrdersService {
             action: input.action,
             role: session.role,
           });
-
-          // Stock is reserved atomically on confirmation.
-          if (input.action === "confirm") {
-            await this.reserveStock(client, order.id);
-          }
 
           await this.repo.updateStatus(client, order.id, result.to);
           await this.repo.insertEvent(client, {
@@ -127,20 +155,4 @@ export class OrdersService {
     });
   }
 
-  private async reserveStock(client: PoolClient, orderId: string): Promise<void> {
-    const items = await this.repo.getOrderItems(client, orderId);
-    const productIds = items.map((i) => i.product_id);
-    const products = await this.repo.getProductsForUpdate(client, productIds);
-    const stockById = new Map(products.map((p) => [p.id, p.stock_qty]));
-
-    for (const item of items) {
-      const available = stockById.get(item.product_id) ?? 0;
-      if (available < item.quantity) {
-        throw new InsufficientStockError(item.product_id, item.quantity, available);
-      }
-    }
-    for (const item of items) {
-      await this.repo.decrementStock(client, item.product_id, item.quantity);
-    }
-  }
 }

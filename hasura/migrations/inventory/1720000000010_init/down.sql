@@ -1,0 +1,12 @@
+drop trigger if exists reservations_touch on reservations;
+drop trigger if exists stock_items_touch on stock_items;
+drop function if exists touch_updated_at();
+drop table if exists processed_events;
+drop table if exists stock_alerts;
+drop table if exists stock_movements;
+drop table if exists reservations;
+drop table if exists stock_items;
+drop type if exists alert_status;
+drop type if exists alert_level;
+drop type if exists movement_kind;
+drop type if exists reservation_status;

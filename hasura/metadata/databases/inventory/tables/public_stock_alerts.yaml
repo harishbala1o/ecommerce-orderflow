@@ -1,0 +1,9 @@
+table:
+  name: stock_alerts
+  schema: public
+select_permissions:
+  # Stock alerts are an operational concern; customers have no view of them.
+  - role: ops
+    permission:
+      columns: [id, product_id, sku, level, status, available, reorder_level, suggested_qty, created_at, resolved_at]
+      filter: {}

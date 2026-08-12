@@ -31,7 +31,3 @@ select_permissions:
     permission:
       columns: [id, customer_id, status, total_cents, created_at, updated_at]
       filter: {}
-  - role: admin
-    permission:
-      columns: [id, customer_id, status, total_cents, created_at, updated_at]
-      filter: {}

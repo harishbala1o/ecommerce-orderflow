@@ -1,0 +1,22 @@
+import { Module } from "@nestjs/common";
+import { Pool } from "pg";
+import { ConfigModule, APP_CONFIG, type ServiceConfig } from "../config/config.module.js";
+import { createPool } from "./pool.js";
+import { InventoryRepository } from "./inventory.repository.js";
+import { PG_POOL } from "./tokens.js";
+
+export { PG_POOL };
+
+@Module({
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: PG_POOL,
+      useFactory: (config: ServiceConfig): Pool => createPool(config.DATABASE_URL),
+      inject: [APP_CONFIG],
+    },
+    InventoryRepository,
+  ],
+  exports: [PG_POOL, InventoryRepository],
+})
+export class DbModule {}

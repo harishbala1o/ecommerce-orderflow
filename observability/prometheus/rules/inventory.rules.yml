@@ -1,0 +1,39 @@
+# Stock health. These are operational warnings rather than SLO breaches: running
+# out of a product is a business event, not a service failure, so it does not
+# burn an error budget.
+
+groups:
+  - name: inventory_alerts
+    rules:
+      - alert: OrderflowStockOutOfStock
+        expr: min by (sku) (inventory_available) <= 0
+        for: 2m
+        labels:
+          severity: ticket
+          area: inventory
+        annotations:
+          summary: "{{ $labels.sku }} cannot be sold: nothing available"
+          description: "Availability (on hand minus reserved) has been zero or below for 2 minutes. New orders for this SKU will be rejected."
+
+      - alert: OrderflowStockAlertsOpen
+        expr: inventory_alerts_open > 0
+        for: 5m
+        labels:
+          severity: ticket
+          area: inventory
+        annotations:
+          summary: "{{ $value }} stock alert(s) awaiting a reorder decision"
+          description: "One or more items are at or below their reorder level. Receive stock to resolve."
+
+      - alert: OrderflowReservationFailuresHigh
+        expr: |
+          sum(rate(inventory_reservations_total{outcome="insufficient_stock"}[10m]))
+          /
+          clamp_min(sum(rate(inventory_reservations_total[10m])), 0.001) > 0.1
+        for: 10m
+        labels:
+          severity: ticket
+          area: inventory
+        annotations:
+          summary: "More than 10% of reservation attempts are failing on stock"
+          description: "Customers are being turned away at checkout. Likely under-stocked popular items."

@@ -17,11 +17,9 @@ select_permissions:
     permission:
       columns: [id, order_id, from_status, to_status, action, actor_id, actor_role, reason, correlation_id, created_at]
       filter: {}
-  - role: admin
-    permission:
-      columns: [id, order_id, from_status, to_status, action, actor_id, actor_role, reason, correlation_id, created_at]
-      filter: {}
 event_triggers:
+  # Two independent consumers of the same append-only table. Neither knows about
+  # the other, and a failure in one does not affect the other's delivery.
   - name: order_event_created
     definition:
       enable_manual: false
@@ -32,6 +30,21 @@ event_triggers:
       interval_sec: 10
       timeout_sec: 60
     webhook: http://workflow-service:3001/events/order-event
+    headers:
+      - name: x-action-secret
+        value_from_env: ACTION_SECRET
+  # Keeps stock in step with the order lifecycle: CANCELLED releases the hold,
+  # SHIPPED commits it. Every other transition is ignored.
+  - name: inventory_sync
+    definition:
+      enable_manual: false
+      insert:
+        columns: "*"
+    retry_conf:
+      num_retries: 3
+      interval_sec: 10
+      timeout_sec: 60
+    webhook: http://inventory-service:3002/events/order-event
     headers:
       - name: x-action-secret
         value_from_env: ACTION_SECRET

@@ -1,0 +1,128 @@
+{
+  "uid": "orderflow-inventory",
+  "title": "OrderFlow — Inventory & Stock",
+  "tags": ["orderflow", "inventory"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Open stock alerts",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "inventory_alerts_open or vector(0)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Availability by SKU (on hand minus reserved)",
+      "type": "bargauge",
+      "gridPos": { "h": 12, "w": 9, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "green", "value": 30 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "min by (sku) (inventory_available)",
+          "legendFormat": "{{sku}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Units reserved but not yet shipped",
+      "type": "timeseries",
+      "gridPos": { "h": 12, "w": 9, "x": 15, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (sku) (inventory_reserved) > 0",
+          "legendFormat": "{{sku}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Reservation outcomes (per second)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (outcome) (rate(inventory_reservations_total[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Stock movements by kind (per second)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (kind) (rate(inventory_movements_total[5m]))",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Checkout rejections from insufficient stock (share of attempts)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(inventory_reservations_total{outcome=\"insufficient_stock\"}[10m])) / clamp_min(sum(rate(inventory_reservations_total[10m])), 0.001)",
+          "legendFormat": "rejected"
+        }
+      ]
+    }
+  ]
+}

@@ -20,7 +20,3 @@ select_permissions:
     permission:
       columns: [id, email, display_name, role, created_at]
       filter: {}
-  - role: admin
-    permission:
-      columns: [id, keycloak_id, email, display_name, role, created_at]
-      filter: {}

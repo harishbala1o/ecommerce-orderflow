@@ -5,6 +5,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(3001),
   ACTION_SECRET: z.string().min(1),
+  INVENTORY_URL: z.string().url().default("http://inventory-service:3002"),
 });
 
 export type ServiceConfig = z.infer<typeof schema>;

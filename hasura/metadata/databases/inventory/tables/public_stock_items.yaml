@@ -1,0 +1,14 @@
+table:
+  name: stock_items
+  schema: public
+select_permissions:
+  # Customers see availability only: how much is on hand or already promised to
+  # other people is internal information.
+  - role: customer
+    permission:
+      columns: [product_id, sku]
+      filter: {}
+  - role: ops
+    permission:
+      columns: [product_id, sku, on_hand, reserved, reorder_level, reorder_qty, updated_at]
+      filter: {}
