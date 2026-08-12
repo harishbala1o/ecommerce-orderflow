@@ -15,9 +15,13 @@ Browser ──(1) OIDC──► Keycloak
    │
    │ (2) GraphQL + JWT (Bearer)
    ▼
- Hasura ──(3) Action/Event + shared secret──► Workflow service ──► Postgres
+ Hasura ──(3) Action/Event + shared secret──► Workflow service ──► order DB
+   │                                                │
+   │                                    (3) shared secret
+   │                                                ▼
+   ├──(3) Event + shared secret──────────► Inventory service ──► inventory DB
    │
-   └──(4) SQL (row/column permissions)──► Postgres
+   └──(4) SQL (row/column permissions)──► order DB + inventory DB
 ```
 
 1. **Browser ↔ Keycloak** — authentication happens at Keycloak (OIDC, PKCE).
@@ -26,17 +30,20 @@ Browser ──(1) OIDC──► Keycloak
    Hasura validates the signature against Keycloak's JWKS and derives the role
    and user id from the token's claims (`claims_map`). The browser cannot
    choose its own role — allowed roles come from the verified token.
-3. **Hasura ↔ Workflow service** — the service is **not** a public API. It is
-   reachable only from Hasura, authenticated by a shared `x-action-secret`
-   header that Hasura injects server-side (never exposed to the browser, and
-   client headers are not forwarded). The service re-derives the actor from
-   Hasura's forwarded session variables — never from client-supplied fields.
+3. **Hasura ↔ services** — neither service is a public API. Both are reachable
+   only from Hasura (and the inventory service additionally from the workflow
+   service), authenticated by a shared `x-action-secret` header that Hasura
+   injects server-side (never exposed to the browser, and client headers are not
+   forwarded). Each service re-derives the actor from Hasura's forwarded session
+   variables, never from client-supplied fields. In Kubernetes this is enforced
+   again by NetworkPolicy: only Hasura may reach the workflow service, and only
+   the workflow service and Hasura may reach the inventory service.
 4. **Hasura/service ↔ Postgres** — all access is over the internal network.
 
 ## What the design protects against
 
-- **SQL injection** — the workflow service uses only parameterized queries;
-  Hasura generates parameterized SQL. No string-built SQL anywhere.
+- **SQL injection** — both services use only parameterized queries; Hasura
+  generates parameterized SQL. No string-built SQL anywhere.
 - **Broken authorization** — enforced at two independent layers:
   - Hasura **row/column permissions** scope every read to the caller
     (a customer can only ever see their own orders/items/events).
@@ -47,15 +54,22 @@ Browser ──(1) OIDC──► Keycloak
 - **Illegal state changes** — order status can only change through the service,
   which is the sole writer of `orders.status`. Clients cannot issue a raw
   status update. Every transition is written to an append-only `order_events`
-  audit table inside the same transaction.
+  audit table inside the same transaction. Stock changes are likewise recorded
+  in an append-only `stock_movements` table inside the inventory service's own
+  transaction, with `reserved <= on_hand` enforced as a database constraint so
+  no code path can oversell.
 - **Token forgery / privilege escalation** — roles are taken from the
   cryptographically verified JWT (Hasura via JWKS; the web app reads the role
   from next-auth's validated OIDC profile, and treats it only as a UI hint).
 - **Idempotency abuse** — event-trigger side effects are deduplicated on the
   Hasura delivery id, so at-least-once retries never double-apply.
 - **Resource exhaustion (basic)** — order input is bounded (max items/qty), the
-  DB pool is capped with connection/statement timeouts, and request bodies are
-  bounded by the framework default.
+  DB pool is capped with connection/statement timeouts, request bodies are
+  bounded by the framework default, and both services **rate limit per user**
+  (30/min for order actions, 60/min for inventory commands). Event-handler,
+  health and metrics endpoints are exempt so retries and probes never trip the
+  limit. Note the counters are in-memory, so limits are per replica; an edge or
+  ingress tier is still wanted in production.
 - **Secret exposure in git** — only `*.env.example` files (dev placeholders)
   are committed; real `.env` / `.env.local` are gitignored. Build output and
   caches are gitignored.
@@ -87,12 +101,14 @@ Then, via the production overlay (tracked under M5 / Phase 2):
   origin, admin secret from a secrets manager.
 - **Secrets** from Kubernetes `Secret`s / a secrets manager, not `.env` files;
   documented rotation.
-- **Least privilege** — separate Postgres roles for Hasura and the service
-  (not the owner role); the workflow service exposed only as an internal
-  (ClusterIP) service.
-- **Edge controls** — rate limiting and WAF at the ingress; dependency
-  scanning (Dependabot / `pnpm audit`) and image scanning in CI.
-- **Non-root containers** (already applied to the workflow service).
+- **Least privilege** — separate Postgres roles per service (not the owner
+  role); both services exposed only as internal (ClusterIP) services. The
+  inventory context already has its own database, which limits the blast radius
+  of a compromised order service to order data.
+- **Edge controls** — a WAF and a shared-store rate limiter at the ingress, to
+  complement the per-replica service limits; dependency scanning (Dependabot or
+  `pnpm audit`) and image scanning in CI.
+- **Non-root containers** (already applied to both services).
 
 ## Reporting
 

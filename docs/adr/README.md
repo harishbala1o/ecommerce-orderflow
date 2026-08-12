@@ -10,5 +10,7 @@ older ones explicitly.
 | [0002](0002-sync-actions-async-events.md) | Sync Actions when the caller needs the result; async Event Triggers otherwise | Accepted |
 | [0003](0003-nestjs-workflow-service.md) | NestJS (TypeScript) for the workflow service | Accepted |
 | [0004](0004-keycloak-oidc.md) | Keycloak (self-hosted OIDC) for authentication + role claims | Accepted |
-| [0005](0005-sole-writer-audit.md) | The service is the sole writer of order state, with an append-only audit log | Accepted |
+| [0005](0005-sole-writer-audit.md) | The service is the sole writer of order state, with an append-only audit log | Accepted, stock portion amended by 0007 |
 | [0006](0006-observability-stack.md) | OpenTelemetry + Prometheus + Tempo + Grafana for observability | Accepted |
+| [0007](0007-inventory-bounded-context.md) | Inventory as a separate bounded context with its own database | Accepted |
+| [0008](0008-rate-limiting-placement.md) | Rate limiting in the services, keyed on the user | Accepted |

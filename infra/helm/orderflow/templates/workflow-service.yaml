@@ -50,6 +50,8 @@ spec:
                 secretKeyRef: { name: {{ include "orderflow.secretName" . }}, key: action-secret }
             - name: PORT
               value: "3001"
+            - name: INVENTORY_URL
+              value: "http://{{ include "orderflow.name" . }}-inventory:3002"
           ports:
             - containerPort: 3001
           readinessProbe:

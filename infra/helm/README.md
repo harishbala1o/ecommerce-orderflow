@@ -10,6 +10,8 @@ A Helm chart for Ecommerce OrderFlow with `dev` (kind-friendly) defaults and a
   metadata** (`infra/docker/hasura.Dockerfile`) so they self-apply in-cluster
 - **workflow-service** — Deployment + Service + **HPA** + **NetworkPolicy** (only Hasura
   may reach it) + liveness/readiness probes + resource requests/limits
+- **inventory-service** — Deployment + Service + **NetworkPolicy** (only the workflow
+  service and Hasura may reach it); uses its own database
 - **keycloak** — Deployment + Service + realm ConfigMap
 - **web** — Deployment + Service
 - **secret** — dev secrets (prod expects an existing Secret via `secrets.existingSecret`)
@@ -22,7 +24,9 @@ kind create cluster --name orderflow
 # Build + load the images kind can't pull (custom + local)
 docker build -f infra/docker/hasura.Dockerfile -t orderflow/hasura:dev .
 docker build -f apps/workflow-service/Dockerfile -t orderflow/workflow-service:dev .
-kind load docker-image orderflow/hasura:dev orderflow/workflow-service:dev --name orderflow
+docker build -f apps/inventory-service/Dockerfile -t orderflow/inventory-service:dev .
+kind load docker-image orderflow/hasura:dev orderflow/workflow-service:dev \
+  orderflow/inventory-service:dev --name orderflow
 
 helm install orderflow infra/helm/orderflow -n orderflow --create-namespace
 
@@ -45,7 +49,8 @@ helm install orderflow infra/helm/orderflow -n orderflow --create-namespace \
 # Provision the Secret out-of-band first (see keys in templates/secret.yaml):
 kubectl create secret generic orderflow-secrets -n orderflow \
   --from-literal=admin-secret=... --from-literal=action-secret=... \
-  --from-literal=database-url=postgres://... --from-literal=nextauth-secret=... \
+  --from-literal=database-url=postgres://... --from-literal=inventory-database-url=postgres://... \
+  --from-literal=nextauth-secret=... \
   --from-literal=keycloak-admin-password=... --from-literal=postgres-password=...
 
 helm install orderflow infra/helm/orderflow -n orderflow \

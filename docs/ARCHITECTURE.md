@@ -1,6 +1,6 @@
 # Ecommerce OrderFlow: Architecture and Onboarding Guide
 
-**Version 1.0 · Last updated 2026-07-30 · Status: Phase 1 complete, Phase 2 infrastructure written, Phase 3 in progress**
+**Version 1.1 · Last updated 2026-08-12 · Status: Phase 1 complete, Phase 2 infrastructure written, Phase 3 in progress**
 
 This document is the single visual and technical reference for the Ecommerce OrderFlow
 project. It is written for someone who is completely new to software engineering, so every
@@ -25,7 +25,8 @@ Part 1 and start at Part 2.
 **Part 3: How a request travels**
 8. [Flow A: signing in](#8-flow-a-signing-in)
 9. [Flow B: reading data](#9-flow-b-reading-data)
-10. [Flow C: changing an order](#10-flow-c-changing-an-order)
+10. [Flow B2: placing an order, the saga](#9a-flow-b2-placing-an-order-the-saga)
+11. [Flow C: changing an order](#10-flow-c-changing-an-order)
 11. [Flow D: background work](#11-flow-d-background-work)
 
 **Part 4: Running and shipping it**
@@ -174,8 +175,9 @@ flowchart LR
     A["2. LOGIN SERVER<br/>Keycloak<br/>Proves who you are"]
     G["3. API<br/>Hasura<br/>Answers data questions"]
     B["4. BUSINESS LOGIC<br/>Workflow Service<br/>Enforces the rules"]
-    D[("5. DATABASE<br/>PostgreSQL<br/>Stores everything")]
-    O["6. OBSERVABILITY<br/>Grafana stack<br/>Watches the system"]
+    I["5. INVENTORY<br/>Inventory Service<br/>Owns the stock"]
+    D[("6. DATABASES<br/>PostgreSQL<br/>One per service")]
+    O["7. OBSERVABILITY<br/>Grafana stack<br/>Watches the system"]
 
     U <-->|"pages and clicks"| F
     F -->|"send me to log in"| A
@@ -184,6 +186,8 @@ flowchart LR
     G -->|"reads"| D
     G -->|"rule-changing requests"| B
     B -->|"the only component<br/>allowed to write orders"| D
+    B -->|"hold, release or<br/>commit stock"| I
+    I -->|"the only component<br/>allowed to write stock"| D
     B -.->|"numbers and traces"| O
 
     style U fill:#fff,stroke:#333,stroke-width:2px
@@ -191,14 +195,21 @@ flowchart LR
     style A fill:#fce8e6,stroke:#d93025,stroke-width:2px
     style G fill:#e6f4ea,stroke:#188038,stroke-width:2px
     style B fill:#fef7e0,stroke:#f9ab00,stroke-width:2px
+    style I fill:#fff3e0,stroke:#e8710a,stroke-width:2px
     style D fill:#f3e8fd,stroke:#8430ce,stroke-width:2px
     style O fill:#f1f3f4,stroke:#5f6368,stroke-width:2px
 ```
 
-The single most important idea in this diagram: **reading data and changing data take
-different paths**. Reads go straight through the API. Changes to an order must go through
-the Workflow Service, because that service is the only place the rules live and the only
-component permitted to write an order's status.
+Two ideas matter most in this diagram.
+
+**Reading data and changing data take different paths.** Reads go straight through the API.
+Changes to an order must go through the Workflow Service, because that is the only place the
+rules live and the only component permitted to write an order's status.
+
+**Orders and stock are owned by different services.** The Workflow Service cannot change
+stock and the Inventory Service cannot change orders. Each owns its own database. That
+separation is what makes reserved-versus-available stock possible, and it is also why
+placing an order is a multi-step conversation rather than one atomic write.
 
 ## 4. The full architecture diagram
 
@@ -233,14 +244,14 @@ flowchart TB
         HAS["<b>Generated GraphQL API</b><br/>declarative row and column permissions<br/>subscriptions available"]
     end
 
-    subgraph LOGIC["BUSINESS LOGIC: workflow service, port 3001"]
+    subgraph LOGIC["BUSINESS LOGIC: two bounded contexts"]
         direction LR
-        GUARD["Auth guard<br/><i>shared secret,<br/>constant time compare</i>"]
-        WF["<b>NestJS handlers</b><br/>transactional writes"]
-        DOMAIN["Domain package<br/><i>state machine,<br/>framework free</i>"]
+        WF["<b>Workflow service</b> :3001<br/>NestJS, owns order state<br/><i>+ domain state machine</i>"]
+        INV["<b>Inventory service</b> :3002<br/>NestJS, owns stock<br/><i>reserve · release · commit</i>"]
     end
 
-    PG[("<b>DATA: PostgreSQL 16, port 5432</b><br/>users · products · orders<br/>order_items · order_events · processed_events")]
+    PGO[("<b>Order database</b><br/>users · products · orders<br/>order_items · order_events")]
+    PGI[("<b>Inventory database</b><br/>stock_items · reservations<br/>stock_movements · stock_alerts")]
 
     BROWSER -->|"① load page over HTTPS"| WEB
     WEB --- NA
@@ -248,11 +259,13 @@ flowchart TB
     NA -->|"②③ OIDC login exchange,<br/>returns a signed JWT"| KC
     URQL -->|"④ GraphQL request<br/>Authorization: Bearer JWT"| HAS
     HAS -->|"⑤ verify token signature"| JWKS
-    HAS -->|"⑥a reads: parameterised SQL,<br/>scoped by row permissions"| PG
-    HAS -->|"⑥b Actions, synchronous<br/>⑥c Event Triggers, asynchronous"| GUARD
-    GUARD --> WF
-    WF --- DOMAIN
-    WF -->|"⑦ writes inside one transaction:<br/>status, audit row, stock"| PG
+    HAS -->|"⑥a reads: parameterised SQL,<br/>scoped by row permissions"| PGO
+    HAS -->|"⑥a reads: stock and alerts<br/>(second data source)"| PGI
+    HAS -->|"⑥b Actions, synchronous<br/>⑥c Event Triggers, asynchronous"| WF
+    HAS -->|"⑥c Event Triggers:<br/>keep stock in step"| INV
+    WF -->|"⑦ reserve, confirm, release<br/>(synchronous, over HTTP)"| INV
+    WF -->|"⑧ order writes in one transaction:<br/>status and audit row"| PGO
+    INV -->|"⑧ stock writes in one transaction:<br/>levels, reservation, movement"| PGI
 
     style BROWSER fill:#ffffff,stroke:#333,stroke-width:2px
     style WEB fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px
@@ -262,15 +275,20 @@ flowchart TB
     style JWKS fill:#fdf3f2,stroke:#d93025
     style HAS fill:#e6f4ea,stroke:#188038,stroke-width:2px
     style WF fill:#fef7e0,stroke:#f9ab00,stroke-width:2px
-    style GUARD fill:#fffdf5,stroke:#f9ab00
-    style DOMAIN fill:#fffdf5,stroke:#f9ab00
-    style PG fill:#f3e8fd,stroke:#8430ce,stroke-width:2px
+    style INV fill:#fff3e0,stroke:#e8710a,stroke-width:2px
+    style PGO fill:#f3e8fd,stroke:#8430ce,stroke-width:2px
+    style PGI fill:#f3e8fd,stroke:#8430ce,stroke-width:2px
 ```
 
-One arrow is deliberately left out to keep the diagram readable: after the Workflow Service
-writes an audit row at step ⑦, that insert causes the database to notify Hasura, which then
-calls the service back asynchronously. That loop is drawn properly in
+One arrow is deliberately left out to keep the diagram readable: when the Workflow Service
+writes an audit row at step ⑧, that insert causes the database to notify Hasura, which then
+calls **both** services back asynchronously. That loop is drawn properly in
 [Flow D](#11-flow-d-background-work).
+
+Note the two databases. Each service owns its own, and PostgreSQL cannot join or transact
+across databases, so neither service can reach into the other's data even by accident. The
+cost of that guarantee is that a single transaction spanning an order and its stock is
+impossible, which is why placement is a saga: see [Flow C](#10-flow-c-changing-an-order).
 
 ### 4.2 The observability path
 
@@ -399,9 +417,29 @@ checking. There are three:
 - **How it communicates:** it is called by Hasura in two modes, described in Part 3. It
   writes to PostgreSQL. It exposes metrics for Prometheus and sends traces to Tempo.
 - **A detail worth understanding:** a transaction means all of the writes happen or none of
-  them do. If stock turns out to be insufficient halfway through confirming an order, the
-  status change and the audit row are rolled back too. The order can never end up
-  `CONFIRMED` with stock that was never reserved.
+  them do. A status change and its audit row are always written together, so an order can
+  never change state without leaving a trace. Stock is *not* part of that transaction any
+  more, because it lives in another service with its own database: see
+  [Flow B2](#9a-flow-b2-placing-an-order-the-saga).
+- **Rate limited** at 30 requests per minute per user, keyed on the id Hasura forwards rather
+  than on the IP, because every request arrives from a single Hasura pod and an IP-based key
+  would put every user in one shared bucket.
+
+### 5.4b Inventory service (stock)
+
+- **Technology:** NestJS 10, TypeScript, its own PostgreSQL database, port 3002.
+- **What it does:** owns every unit of stock. It holds stock for an order (reserve), gives it
+  back (release), removes it when goods ship (commit), takes delivery of new stock (receive),
+  and raises alerts when availability falls to or below an item's reorder level.
+- **Why it exists:** stock is a genuinely different concern from order state, with its own
+  rules and its own failure modes. Splitting it out is what makes the distinction between
+  stock that is *present* and stock that is *already promised* expressible at all.
+- **How it communicates:** the workflow service calls it synchronously over HTTP for
+  reservations. Hasura calls it asynchronously through an Event Trigger when an order is
+  cancelled or shipped. It reads and writes only its own database.
+- **A detail worth understanding:** it never trusts a caller's view of stock. Every mutation
+  locks the affected rows, orders them by product id so concurrent multi-item reservations
+  cannot deadlock against each other, and re-checks availability inside the transaction.
 
 ### 5.5 Domain package (the rules, in isolation)
 
@@ -461,6 +499,8 @@ roadmap, and the stub is the seam where it would attach.
 Six tables. The diagram shows how they relate; `1` to `many` means one order has many line
 items.
 
+### 6.1 Order database
+
 ```mermaid
 erDiagram
     users {
@@ -477,7 +517,6 @@ erDiagram
         text name
         text description
         integer unit_price_cents "money as whole cents"
-        integer stock_qty
     }
     orders {
         uuid id PK
@@ -516,6 +555,65 @@ erDiagram
     orders ||--o{ order_events : "has history of"
     products ||--o{ order_items : "is sold as"
 ```
+
+### 6.2 Inventory database
+
+A separate database, so there are deliberately **no foreign keys** between these tables and
+the ones above. `stock_items.product_id` mirrors `products.id` by convention, and the two are
+kept in step by the seed and by the services, never by the database.
+
+```mermaid
+erDiagram
+    stock_items {
+        uuid product_id PK "mirrors products.id in the other database"
+        text sku
+        integer on_hand "units physically present"
+        integer reserved "units already promised to orders"
+        integer reorder_level "availability at which an alert opens"
+        integer reorder_qty "minimum suggested reorder"
+    }
+    reservations {
+        uuid id PK
+        uuid order_id "unique with product_id, giving idempotency"
+        uuid product_id FK
+        integer quantity
+        enum status "HELD, RELEASED or COMMITTED"
+        timestamptz expires_at "null once the order is confirmed"
+    }
+    stock_movements {
+        uuid id PK
+        uuid product_id FK
+        uuid order_id
+        enum kind "RESERVE, RELEASE, COMMIT, RECEIVE, ADJUST"
+        integer quantity
+        integer on_hand_after
+        integer reserved_after
+        timestamptz created_at
+    }
+    stock_alerts {
+        uuid id PK
+        uuid product_id FK
+        enum level "LOW or OUT_OF_STOCK"
+        enum status "OPEN or RESOLVED"
+        integer available
+        integer suggested_qty
+    }
+
+    stock_items ||--o{ reservations : "is held by"
+    stock_items ||--o{ stock_movements : "records"
+    stock_items ||--o{ stock_alerts : "raises"
+```
+
+Three details in this model are worth calling out:
+
+**`available` is never stored.** It is always computed as `on_hand - reserved`. A stored
+copy would be one more thing that can drift out of step with reality.
+
+**`reserved <= on_hand` is a database constraint**, not an application check, so no code path
+and no race can promise stock that does not exist.
+
+**At most one open alert per product is a partial unique index**, again in the database. Two
+concurrent movements that both push an item below its reorder level cannot open two alerts.
 
 Two design decisions in this model are worth calling out:
 
@@ -642,6 +740,61 @@ someone wrote their own query by hand and sent it with Cara's token, they would 
 ever receive Cara's orders. The same query sent with an `ops` token returns every order,
 because a different permission applies to that role.
 
+## 9a. Flow B2: placing an order (the saga)
+
+Placement is the one flow that spans both bounded contexts, so it cannot be a single
+transaction. This is the most important diagram in the document for understanding the
+current design.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Cara (customer)
+    participant W as Workflow service
+    participant I as Inventory service
+    participant DO as Order DB
+    participant DI as Inventory DB
+
+    U->>W: placeOrder(items)
+    W->>DO: price the lines from the catalogue
+    Note over W: an unknown product fails here,<br/>before any stock is touched
+
+    W->>I: POST /inventory/reservations (orderId, items)
+    I->>DI: BEGIN, lock the stock rows
+    alt enough available for every line
+        I->>DI: insert reservations (HELD, expires in 5 min)<br/>reserved += qty, write RESERVE movements
+        I->>DI: COMMIT
+        I-->>W: 200 reserved
+    else any line short
+        I->>DI: ROLLBACK (nothing written at all)
+        I-->>W: 409 insufficient-stock
+        W-->>U: error, and no order is created
+    end
+
+    W->>DO: BEGIN, insert order + items + audit row, COMMIT
+    alt the order write succeeded
+        W->>I: POST /reservations/{id}/confirm
+        I->>DI: clear expires_at, so the hold never expires
+        W-->>U: order placed, status PENDING
+    else the order write failed
+        W->>I: compensating release
+        Note over I: if even that call fails, the sweeper<br/>reclaims the hold after its expiry
+        W-->>U: error
+    end
+```
+
+Three properties are worth understanding:
+
+**Stock is held before the order exists.** That is what lets the customer be told
+immediately, and it means no order row is ever created for goods that cannot be supplied.
+
+**A reservation is idempotent.** It is unique on `(order_id, product_id)`, so a retry after a
+network timeout that actually succeeded holds the stock once, not twice.
+
+**Nothing is left dangling.** If the order write fails, a compensating release runs. If that
+release also fails, the hold still carries an expiry and the sweeper reclaims it within a
+minute. The worst case is stock held slightly too long, never stock sold twice.
+
 ## 10. Flow C: changing an order
 
 The full path of a state change, which is where all the interesting machinery lives.
@@ -710,28 +863,44 @@ a good example: nobody should stare at a spinner while an email is queued.
 ```mermaid
 sequenceDiagram
     autonumber
-    participant D as PostgreSQL
+    participant D as Order DB
     participant H as Hasura
-    participant S as Workflow Service
+    participant S as Workflow service
+    participant I as Inventory service
 
     Note over D: an order_events row was<br/>committed in Flow C
-    D->>H: the insert fires the<br/>order_event_created trigger
-    H->>S: POST /events/order-event<br/>+ x-action-secret + delivery id
-    S->>D: has this delivery id been<br/>seen before? (processed_events)
-    alt first time
-        S->>D: record the delivery id
+    D->>H: the insert fires two triggers
+    par notification consumer
+        H->>S: POST /events/order-event
+        S->>S: first delivery? (processed_events)
         S->>S: run the side effect<br/>(notification stub, logged)
         S-->>H: 200 ok
-    else already processed
-        S-->>H: 200 skipped
+    and stock consumer
+        H->>I: POST /events/order-event
+        I->>I: first delivery? (processed_events)
+        alt to_status = CANCELLED
+            I->>I: release the hold
+        else to_status = SHIPPED
+            I->>I: commit it (on_hand falls)
+        else anything else
+            I->>I: ignore, stock is unaffected
+        end
+        I-->>H: 200
     end
-    Note over H,S: if the service is down or errors,<br/>Hasura retries 3 times, 10s apart
+    Note over H,I: each consumer is retried independently<br/>3 times, 10s apart. One failing does<br/>not affect the other.
 ```
 
-The key idea is **idempotency**: doing the same thing twice has the same result as doing it
-once. Hasura guarantees *at least once* delivery, which means retries can deliver a
-duplicate. The `processed_events` table makes duplicates harmless, so a customer never gets
-the same notification twice.
+Two ideas matter here.
+
+**Idempotency.** Doing the same thing twice has the same result as doing it once. Hasura
+guarantees *at least once* delivery, so retries can deliver a duplicate. Each service keeps
+its own `processed_events` table, so a customer never gets the same notification twice and
+stock is never released twice. The inventory handler has a second guard as well: a replay
+finds no `HELD` reservation and changes nothing.
+
+**Fan-out.** One append-only table has two consumers that know nothing about each other. If
+the notification handler is broken, stock still stays correct, and the reverse holds too.
+Adding a third consumer later needs no change to either existing one.
 
 **When to choose which path**, stated as a rule the project follows:
 
@@ -759,7 +928,8 @@ flowchart TB
             K["Keycloak<br/>:8081"]
             HH["Hasura<br/>:8080"]
             WW["Workflow Service<br/>:3001"]
-            PP[("PostgreSQL<br/>:5432")]
+            II["Inventory Service<br/>:3002"]
+            PP[("PostgreSQL :5432<br/>two databases:<br/>orders + inventory")]
         end
         subgraph OPT["Optional: make obs-up"]
             PR["Prometheus :9090"]
@@ -772,9 +942,13 @@ flowchart TB
     DEV --> K
     HH --> PP
     HH --> WW
+    HH --> II
+    WW --> II
     WW --> PP
+    II --> PP
     HH --> K
     PR --> WW
+    PR --> II
     WW --> TE
     GR --> PR
     GR --> TE
@@ -793,6 +967,8 @@ flowchart TB
             DEPH["Deployment: hasura<br/>image carries migrations"]
             SVCW["Service: workflow"]
             DEPW["Deployment: workflow<br/>+ HorizontalPodAutoscaler 2 to 6<br/>+ NetworkPolicy"]
+            SVCI["Service: inventory"]
+            DEPI["Deployment: inventory"]
             STS[("StatefulSet: postgres<br/>+ PersistentVolumeClaim")]
             SEC["Secret: orderflow-secrets"]
         end
@@ -802,13 +978,17 @@ flowchart TB
     DEPH -->|"only Hasura may reach<br/>the workflow service"| SVCW
     SVCW --> DEPW
     DEPW --> STS
+    DEPW -->|"reserve, release, commit"| SVCI
+    SVCI --> DEPI
+    DEPI --> STS
     SEC -.-> DEPH
     SEC -.-> DEPW
+    SEC -.-> DEPI
 ```
 
-The **NetworkPolicy** is a firewall inside the cluster. It states that only Hasura pods may
-open a connection to the Workflow Service. Even if another pod were compromised, it could
-not call the service directly.
+The **NetworkPolicy** objects are firewalls inside the cluster. Only Hasura may open a
+connection to the Workflow Service, and only the Workflow Service and Hasura may reach the
+Inventory Service. Even if another pod were compromised, it could not touch stock directly.
 
 ### 12.3 Google Cloud, production shape
 
@@ -830,10 +1010,11 @@ flowchart TB
                 PW["web<br/>pods"]
                 PH["hasura<br/>pods"]
                 PF["workflow pods<br/><i>HPA 3 to 12</i>"]
+                PI["inventory<br/>pods"]
                 PK["keycloak<br/>pod"]
             end
 
-            CSQL[("<b>Cloud SQL: PostgreSQL 16</b><br/>private IP, no public address<br/>automated backups")]
+            CSQL[("<b>Cloud SQL: PostgreSQL 16</b><br/>two databases, private IP only<br/>automated backups")]
         end
 
         subgraph SVCS["Project level managed services"]
@@ -847,8 +1028,11 @@ flowchart TB
     ING --> PW
     PW -->|"GraphQL"| PH
     PH -->|"Actions and Events"| PF
+    PH -->|"Events"| PI
+    PF -->|"reserve, release, commit"| PI
     PH --> CSQL
     PF --> CSQL
+    PI --> CSQL
     PK --> CSQL
     PODS -.->|"images pulled<br/>at deploy time"| AR
     PF -.->|"Workload Identity:<br/>no key file on disk"| SM
@@ -858,6 +1042,7 @@ flowchart TB
     style PW fill:#e8f0fe,stroke:#1a73e8
     style PH fill:#e6f4ea,stroke:#188038,stroke-width:2px
     style PF fill:#fef7e0,stroke:#f9ab00,stroke-width:2px
+    style PI fill:#fff3e0,stroke:#e8710a,stroke-width:2px
     style PK fill:#fce8e6,stroke:#d93025
     style CSQL fill:#f3e8fd,stroke:#8430ce,stroke-width:2px
     style SM fill:#fce8e6,stroke:#d93025,stroke-width:2px
@@ -952,9 +1137,12 @@ running it, not just by writing it.
 | **M5d** | Architecture Decision Records and architecture documentation | ✅ Complete |
 | **Phase 2** | Terraform for Google Cloud: written, formatted, and validated | ⚠️ Not applied |
 | **Phase 3** | SLOs, error budget alerts, Alertmanager | ✅ Complete |
+| **Phase 3** | Rate limiting (per-user, with retries and probes exempt) | ✅ Complete |
+| **Phase 3** | Inventory service: second bounded context, reserve/release/commit saga, alerts | ✅ Complete |
 
-Repository facts at the time of writing: 54 commits, 4 continuous integration workflows,
-6 Architecture Decision Records, 31 automated tests.
+Repository facts at the time of writing: 4 continuous integration workflows,
+8 Architecture Decision Records, 67 automated tests across 6 packages, and two
+independently deployable services.
 
 ## 16. Features completed
 
@@ -966,6 +1154,14 @@ Repository facts at the time of writing: 54 commits, 4 continuous integration wo
 - Complete append only audit history for every order, visible in the interface.
 - Order placement with a product catalogue of 12 items, with live stock levels.
 - Structured, human readable errors for every rejection.
+- **Reserved versus available stock**, owned by a separate inventory service with its own
+  database, so overselling is prevented at the moment of placement rather than at
+  confirmation.
+- **Saga-based placement** across two bounded contexts, with compensation and a sweeper so a
+  failure never leaves stock stranded.
+- **Low stock alerting** with a suggested reorder quantity, deduplicated by a database
+  constraint, resolved by receiving stock.
+- **Per-user rate limiting** that deliberately exempts event retries and health probes.
 
 **Platform and operations**
 
@@ -994,7 +1190,9 @@ Ordered by what a real deployment would need first.
 | 7 | **Real notification provider** | The notification side effect is a stub that only logs. | Small |
 | 8 | **Realtime updates in the interface** | The dashboard refetches after changes. Hasura supports subscriptions, which would push updates instead. | Small |
 | 9 | **Log shipping** | Logs are structured and correlated but are only written to standard output. Loki or an equivalent would make them searchable. | Small |
-| 10 | **Separate database users per service** | Hasura and the Workflow Service currently share one database account. Least privilege would give each its own. | Medium |
+| 10 | **Separate database users per service** | Hasura and both services currently share one database account. Least privilege would give each its own. | Medium |
+| 11 | **Second database in Terraform** | The chart deploys the inventory service, but the second Cloud SQL database is still created by hand and its connection string added to the secret manually. | Small |
+| 12 | **Catalogue and stock reconciliation** | Nothing detects a product that exists in one database but not the other. | Small |
 
 ## 18. Known limitations
 
@@ -1012,13 +1210,22 @@ Stated plainly, because a document that hides limitations is not useful.
 
 - **Keycloak in development mode.** Convenient locally, not suitable for production.
 - **The dashboard is not containerised.** See item 1 above.
-- **No rate limiting.** Deliberately deferred, because the correct place for it is the
-  ingress or an API gateway, not the internal service whose only caller is Hasura.
+- **Rate limiting is per replica.** Counters are in memory, so with three replicas the
+  effective limit is three times the configured value. Exact global limits would need a
+  shared store such as Redis, and an edge or ingress tier is still wanted in production.
 - **No Content Security Policy.** Baseline security headers are set, but a full policy needs
   care to avoid breaking the login redirect and was postponed.
-- **Single writer bottleneck.** All order writes funnel through one service. This is a
-  deliberate correctness choice, and it scales by adding service replicas, but it is a
-  design constraint worth naming.
+- **Single writer bottleneck per context.** All order writes funnel through the workflow
+  service and all stock writes through the inventory service. This is a deliberate
+  correctness choice that scales by adding replicas, but it is a design constraint worth
+  naming.
+- **Order and stock are eventually consistent.** A cancelled order releases its stock when
+  the event is delivered, not at the instant of cancellation. This is the accepted cost of
+  the bounded-context split, recorded in ADR 0007. The failure direction is safe: stock can
+  be held slightly too long, never sold twice.
+- **The catalogue and stock are linked by convention.** `stock_items.product_id` mirrors
+  `products.id` with no foreign key, because they are separate databases. Nothing currently
+  reconciles a product that exists in one and not the other.
 - **Demo credentials are committed.** The `.env.example` files and the Keycloak realm
   contain development only passwords, clearly labelled as such, so that a fresh clone runs
   with one command. Production must generate new ones with `make gen-secrets`.
@@ -1078,16 +1285,17 @@ delivery so a bad release affects a fraction of traffic rather than everyone.
 
 ### 20.1 Automated tests
 
-31 automated tests run on every push to GitHub.
+67 automated tests run on every push to GitHub.
 
 | Suite | Count | Type | What it proves |
 |-------|-------|------|----------------|
 | `packages/domain` | 19 | Unit | Every legal transition is allowed, every illegal one is rejected, every role gate holds, and the "is it final" rule is derived from the transition table rather than duplicated |
 | `packages/config` | 4 | Unit | Invalid configuration fails immediately at start up with a readable message, rather than causing a mysterious failure later |
-| `apps/workflow-service` | 6 | Integration | Against a **real PostgreSQL database** started in a container: the full lifecycle, stock decrement on confirm, a customer cancelling their own order, ownership enforcement, rejection of illegal transitions, and transaction rollback when stock is insufficient |
+| `apps/workflow-service` | 13 | Unit + integration | Against a **real PostgreSQL database** in a container: the placement saga (stock held before the order exists, the hold confirmed afterwards, no order created when stock is short, and a compensating release when the local write fails), the full lifecycle, ownership enforcement, illegal transitions; plus unit tests for the rate-limit tracker |
+| `apps/inventory-service` | 31 | Unit + integration | Pure stock rules (availability, alert level boundaries, suggested quantity) exhaustively; and against a real database: reserve, atomic multi-line rejection, idempotent re-reserve, release, commit, replay safety, confirm and expiry sweeping, alert opening and resolution, and a **concurrency test proving two simultaneous reservations cannot oversell the last units** |
 | `apps/web/e2e` | 2 | End to end | With a real browser against the whole running stack: a customer places an order and an operations user fulfils it through to delivered with the audit trail visible, and a customer cannot open another customer's order |
 
-Every push also runs linting, TypeScript type checking across all seven packages, and
+Every push also runs linting, TypeScript type checking across all eight packages, and
 Terraform format and validity checks.
 
 ### 20.2 Manual and exploratory verification performed
@@ -1111,6 +1319,17 @@ These were checked by hand during development and confirmed working:
 - **Kubernetes:** Helm chart linted, both value overlays rendered, and the core path deployed
   to a real local cluster with migrations self applying and the API returning seeded data.
 - **Security fixes:** each remediation from the security review re verified after the change.
+- **Rate limiting:** 40 rapid requests as one user produced exactly 30 successes and 10
+  structured `rate-limited` rejections; 50 health probes and 40 metric scrapes were never
+  throttled; no throttled request was recorded as a server error.
+- **The saga, end to end against the running stack:** placement raised `reserved` without
+  touching `on_hand`; shipping moved `on_hand` down and cleared the hold; cancelling returned
+  the units; an oversell attempt was rejected with the product, requested and available
+  quantities preserved across the service boundary and no stock changed; a low-stock alert
+  opened with a suggested quantity and was resolved by receiving stock; the movement ledger
+  showed the full RESERVE, COMMIT, RELEASE and RECEIVE trail with correct running balances.
+- **Second Hasura data source:** stock and alerts readable through the same GraphQL endpoint
+  with role-appropriate columns, and metadata reported consistent.
 
 ## 21. Tests still required before production
 
@@ -1131,7 +1350,10 @@ This is a gap list, not a wish list. Nothing here has been done.
 | Test | Why it matters |
 |------|----------------|
 | Event Trigger retry and eventual success after the service is temporarily down | Retry behaviour is configured and reasoned about but never actually provoked. |
-| Duplicate event delivery, asserting the idempotency table prevents a repeated side effect | The mechanism exists and is unit level tested; the real duplicate path is not. |
+| Duplicate event delivery, asserting the idempotency table prevents a repeated side effect | The mechanism exists and is tested at the service level; the real duplicated Hasura delivery is not. |
+| The sweeper running against a genuinely orphaned reservation in the live stack | Covered by an integration test that fakes the clock, but never provoked by killing the workflow service mid-placement. |
+| A product present in the catalogue but missing from `stock_items` | Nothing reconciles the two databases today; the failure mode is untested. |
+| Rate limits under multiple service replicas | Counters are per replica, so the effective limit changes with scale and has not been measured. |
 | Hasura metadata and Action contract drift detection | If a schema changes and the service is not updated, the failure should be caught in CI rather than at runtime. |
 | Token expiry mid session, asserting silent refresh | The refresh path is implemented and the failure branch was verified, but a genuine mid session expiry was never waited out. |
 | Database connection loss and recovery | Pool limits and timeouts are configured; behaviour during an outage is unverified. |
@@ -1345,7 +1567,16 @@ docker push "$REPO/hasura:v1"
 # The Workflow Service
 docker build -f apps/workflow-service/Dockerfile -t "$REPO/workflow-service:v1" .
 docker push "$REPO/workflow-service:v1"
+
+# The Inventory Service
+docker build -f apps/inventory-service/Dockerfile -t "$REPO/inventory-service:v1" .
+docker push "$REPO/inventory-service:v1"
 ```
+
+> **The inventory database.** The Terraform creates one Cloud SQL instance. The inventory
+> context needs a **second database** on it, plus its own connection string in the secret:
+> `gcloud sql databases create ecommerce_orderflow_inventory --instance=<instance>`. This is
+> not yet automated in Terraform and is listed in Part 17.
 
 > **Known gap.** There is no Dockerfile for the dashboard yet, so there is no `web` image to
 > push. Deploy with `--set web.enabled=false` for now and reach the API directly, or write
@@ -1385,6 +1616,7 @@ helm install orderflow infra/helm/orderflow \
   -f infra/helm/orderflow/values-prod.yaml \
   --set images.hasura="$REPO/hasura:v1" \
   --set images.workflowService="$REPO/workflow-service:v1" \
+  --set images.inventoryService="$REPO/inventory-service:v1" \
   --set web.enabled=false
 
 kubectl -n orderflow rollout status deploy/orderflow-hasura
@@ -1453,7 +1685,14 @@ kubectl -n orderflow exec deploy/orderflow-hasura -- \
 Expect `{"status":"ok"}`. Then confirm the NetworkPolicy works by trying the same call from
 a pod that is not Hasura; it should fail.
 
-**6. Autoscaling is configured**
+**6. The inventory service is reachable from the workflow service only**
+
+```bash
+kubectl -n orderflow exec deploy/orderflow-workflow -- \
+  wget -qO- http://orderflow-inventory:3002/health
+```
+
+**7. Autoscaling is configured**
 
 ```bash
 kubectl -n orderflow get hpa
@@ -1531,11 +1770,13 @@ overlay already sets several of these.
 | Keycloak | <http://localhost:8081> | Login and identity administration |
 | Workflow Service | <http://localhost:3001/health> | Health check |
 | Workflow metrics | <http://localhost:3001/metrics> | Prometheus scrape endpoint |
+| Inventory Service | <http://localhost:3002/health> | Health check |
+| Inventory metrics | <http://localhost:3002/metrics> | Prometheus scrape endpoint |
 | Prometheus | <http://localhost:9090> | Metrics and alert rules |
 | Alertmanager | <http://localhost:9093> | Alert routing |
 | Tempo | <http://localhost:3200> | Trace storage, queried through Grafana |
 | Grafana | <http://localhost:3300> | Dashboards |
-| PostgreSQL | `localhost:5432` | Database, for tools such as psql |
+| PostgreSQL | `localhost:5432` | Both databases: `ecommerce_orderflow` and `ecommerce_orderflow_inventory` |
 
 ## Appendix B: Demo accounts
 
@@ -1553,7 +1794,8 @@ Development only. Password for all three is `demo1234`.
 # Local environment
 make up            # start Postgres, Keycloak, Hasura, Workflow Service
 make obs-up        # the same plus Prometheus, Tempo, Alertmanager, Grafana
-make seed          # load sample users, 12 products, and an example order
+make db-init       # create the inventory database if the volume predates it
+make seed          # load sample users, 12 products with stock levels, an example order
 make smoke         # verify the API returns seeded data with relationships
 make down          # stop the containers
 make reset         # stop and also delete the database volume
@@ -1589,21 +1831,29 @@ ecommerce-orderflow/
 │   │   ├── components/          shared interface pieces
 │   │   ├── lib/                 authentication, GraphQL client, formatting
 │   │   └── e2e/                 Playwright end to end tests
-│   └── workflow-service/        NestJS service (business logic)
-│       ├── src/orders/          Actions: place and transition orders
-│       ├── src/events/          Event Trigger handler with idempotency
-│       ├── src/db/              connection pool and repository
-│       ├── src/observability/   metrics, tracing
-│       ├── src/common/          auth guard, error mapping, session parsing
-│       └── test/                Testcontainers integration tests
+│   ├── workflow-service/        NestJS service: owns order state
+│   │   ├── src/orders/          Actions: place and transition orders
+│   │   ├── src/inventory/       client for the inventory context
+│   │   ├── src/events/          Event Trigger handler with idempotency
+│   │   ├── src/db/              connection pool and repository
+│   │   ├── src/observability/   metrics, tracing
+│   │   ├── src/common/          auth guard, throttler, error mapping, session
+│   │   └── test/                Testcontainers integration tests
+│   └── inventory-service/       ★ NestJS service: owns stock, own database
+│       ├── src/inventory/       reserve, release, commit, receive, sweeper
+│       │                        stock-rules.ts holds the pure availability logic
+│       ├── src/events/          reacts to CANCELLED and SHIPPED
+│       ├── src/db/              pool and repository
+│       └── test/                pure rule tests + Testcontainers integration
 ├── packages/
 │   ├── domain/                  ★ the order state machine, framework free
 │   ├── config/                  validated environment loading
 │   └── graphql-client/          generated typed GraphQL operations
 ├── hasura/
-│   ├── migrations/              versioned schema changes
-│   ├── metadata/                tracked tables, permissions, Actions, Event Triggers
-│   └── seeds/                   sample data
+│   ├── migrations/default/      versioned schema changes, order database
+│   ├── migrations/inventory/    versioned schema changes, inventory database
+│   ├── metadata/                two data sources, permissions, Actions, Event Triggers
+│   └── seeds/                   sample data for both databases
 ├── infra/
 │   ├── docker/                  Compose files, Dockerfiles, smoke test
 │   ├── helm/orderflow/          Kubernetes chart with dev and prod overlays

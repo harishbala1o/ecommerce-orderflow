@@ -11,10 +11,15 @@ Grafana dashboard *OrderFlow — SLOs & Error Budget*, and alerted via Alertmana
 | **Availability** | fraction of order-action requests that are **not** `server_error` | **99.5%** (30-day window) |
 | **Latency** | fraction of requests completing in **< 0.5s** | **95%** |
 
-**Why business rejections are not failures.** A forbidden or illegal transition is the
-service *correctly* returning a 400 — that is a success, not an outage. The metrics
-interceptor classifies every request as `ok`, `client_error` (handled 4xx), or
-`server_error` (5xx/unhandled). Only `server_error` burns the availability budget.
+**Why business rejections are not failures.** A forbidden or illegal transition, or an order
+refused for insufficient stock, is the service *correctly* returning a 4xx: that is a
+success, not an outage. The metrics interceptor classifies every request as `ok`,
+`client_error` (handled 4xx), or `server_error` (5xx/unhandled). Only `server_error` burns
+the availability budget.
+
+Rate-limited requests are rejected by a guard, which runs before the metrics interceptor, so
+they appear in neither the numerator nor the denominator and cannot burn the budget either.
+They are counted separately in `orderflow_throttled_total`.
 
 ## Error budget
 

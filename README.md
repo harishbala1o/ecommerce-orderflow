@@ -19,23 +19,27 @@ backend, DevOps, cloud, and observability engineering.
    dashboard             └──────────────────────────┘
         │ GraphQL (JWT bearer)
         ▼
-   ┌─────────────┐   Actions (sync mutations)   ┌──────────────────────┐
-   │   Hasura    │ ───────────────────────────▶ │  Order Workflow Svc  │
-   │  (GraphQL,  │   Event Triggers (async)      │      (NestJS)        │
-   │  subs, RBAC)│ ◀──────────────────────────── │  • state machine     │
-   └──────┬──────┘                                │  • validation        │
-          │ SQL                                   │  • audit + metrics   │
-          ▼                                       └──────────┬───────────┘
-   ┌─────────────┐                                           │ writes
-   │  Postgres   │ ◀─────────────────────────────────────────┘
-   └─────────────┘
+   ┌─────────────┐  Actions (sync)   ┌──────────────────────┐  reserve  ┌────────────────────┐
+   │   Hasura    │ ────────────────▶ │  Order Workflow Svc  │ ────────▶ │  Inventory Svc     │
+   │  (GraphQL,  │  Events (async)   │      (NestJS)        │  release  │     (NestJS)       │
+   │  subs, RBAC)│ ◀──────────────── │  • state machine     │  commit   │  • on_hand         │
+   │             │                   │  • audit + metrics   │           │  • reserved        │
+   │             │ ─────────────────────── Events (async) ─────────────▶ │  • alerts          │
+   └──────┬──────┘                   └──────────┬───────────┘           └─────────┬──────────┘
+          │ SQL (both sources)                  │ writes                          │ writes
+          ▼                                     ▼                                 ▼
+   ┌───────────────────────────────┐   ┌──────────────────┐         ┌────────────────────────┐
+   │  PostgreSQL                   │   │  order database  │         │  inventory database    │
+   │  two separate databases       │   └──────────────────┘         └────────────────────────┘
+   └───────────────────────────────┘
 ```
 
-**Reads** go straight through Hasura (row-level RBAC from JWT claims). **Business
-operations** go through the workflow service — the sole writer of order state — as
-synchronous Hasura Actions, with retryable side effects driven by asynchronous Event
-Triggers. The order state machine lives in a framework-agnostic package shared by the
-service and the dashboard.
+**Reads** go straight through Hasura (row-level RBAC from JWT claims), across **both** data
+sources. **Business operations** go through the workflow service, the sole writer of order
+state, as synchronous Actions, with retryable side effects driven by asynchronous Event
+Triggers. **Stock** is a separate bounded context with its own database, so orders and stock
+cannot share a transaction: placement is a saga with compensation. The order state machine
+lives in a framework-agnostic package shared by the service and the dashboard.
 
 The *why* behind each major choice is recorded as [Architecture Decision Records](docs/adr/).
 
@@ -49,6 +53,8 @@ The *why* behind each major choice is recorded as [Architecture Decision Records
 - **M5b — CI (GitHub Actions: quality gate, image publish to GHCR, E2E)** ✅
 - **M5c — Kubernetes (Helm chart + kind, HPA/NetworkPolicy, prod overlay)** ✅
 - **M5d — ADRs + architecture docs** ✅
+- **Rate limiting (per-user, retries and probes exempt)** ✅
+- **Inventory service (second bounded context, reserve/release/commit saga, stock alerts)** ✅
 
 **Phase 1 complete.**
 
@@ -70,13 +76,14 @@ and metadata, seeds sample data, and serves GraphQL.
 
 ```bash
 make up      # start Postgres + Hasura (migrations + metadata applied on boot)
-make seed    # load sample users, products, and an order
+make db-init # create the inventory database if the Postgres volume predates it
+make seed    # load sample users, 12 products with stock levels, and an order
 make smoke   # verify the GraphQL API returns the seeded data with relationships
 make down    # stop; `make reset` also drops the data volume
 ```
 
-`make up` starts the full backend: Postgres, **Keycloak** (OIDC), Hasura, and the
-**workflow service**.
+`make up` starts the full backend: Postgres (two databases), **Keycloak** (OIDC), Hasura,
+the **workflow service**, and the **inventory service**.
 
 | Service | URL |
 |---|---|
@@ -84,6 +91,7 @@ make down    # stop; `make reset` also drops the data volume
 | Hasura console | `http://localhost:8080/console` |
 | Keycloak | `http://localhost:8081` |
 | Workflow service | `http://localhost:3001` (`/health`) |
+| Inventory service | `http://localhost:3002` (`/health`) |
 | Dashboard (dev) | `http://localhost:3000` |
 
 ## Run the dashboard
@@ -114,7 +122,17 @@ every action server-side regardless.
 Business operations go through the NestJS service, the only writer of order state.
 Illegal or unauthorized transitions return a structured error
 (`{ message, extensions: { code } }`); each transition writes an append-only
-`order_events` audit row and fires an async event trigger back into the service.
+`order_events` audit row and fires async event triggers.
+
+### Stock (inventory service, its own bounded context)
+
+Stock lives in a separate service with its **own database**, tracking `on_hand` and
+`reserved` separately so `available = on_hand - reserved`. Placing an order **holds** stock
+before the order row is created, cancelling **releases** it, and shipping **commits** it.
+Because the two services own separate databases a single transaction is impossible, so
+placement is a saga with a compensating release and an expiry sweeper. Low stock opens an
+alert carrying a suggested reorder quantity, resolved by receiving stock. See
+[ADR 0007](docs/adr/0007-inventory-bounded-context.md).
 
 ## Observability
 
@@ -122,13 +140,14 @@ Illegal or unauthorized transitions return a structured error
 make obs-up   # full stack + Prometheus, Tempo, Grafana; enables trace export
 ```
 
-- **Grafana** (anonymous, dev): http://localhost:3300 → dashboards *OrderFlow — Service & Domain* and *OrderFlow — SLOs & Error Budget*
+- **Grafana** (anonymous, dev): http://localhost:3300 → dashboards *Service & Domain*, *SLOs & Error Budget*, and *Inventory & Stock*
 - **Prometheus**: http://localhost:9090 · **Alertmanager**: http://localhost:9093 · **Tempo** (traces): via Grafana
 
 Three pillars, correlated:
-- **Metrics** — the workflow service exposes `/metrics`: RED (request rate, p95
-  latency, error rate by route) plus **domain metrics** (`orderflow_transitions_total`
-  by action/from/to/role, `orderflow_orders_placed_total`).
+- **Metrics** — both services expose `/metrics`: RED (request rate, p95 latency, error rate
+  by route) plus **domain metrics** (`orderflow_transitions_total` by action/from/to/role,
+  `orderflow_orders_placed_total`, `inventory_available` and `inventory_reserved` by SKU,
+  `inventory_alerts_open`).
 - **Traces** — OpenTelemetry auto-instruments HTTP/Express/pg, with a manual
   `order.transition` span, exported to Tempo. One trace spans Action → service → Postgres.
 - **Logs** — structured pino JSON carrying the active `trace_id`, so a log line links
@@ -159,6 +178,8 @@ cd apps/web && pnpm test:e2e   # Playwright: full lifecycle + RBAC isolation
 - `packages/graphql-client` — typed GraphQL operations (graphql-codegen, committed output).
 - `apps/workflow-service` — NestJS service: the only writer of order state, exposed
   via Hasura Actions (sync) and Event Triggers (async). Testcontainers integration tests.
+- `apps/inventory-service` — NestJS service: owns stock, its own database, reserve/release/
+  commit saga, alerting. Testcontainers integration tests.
 - `apps/web` — Next.js dashboard: Keycloak sign-in, role-aware order workflow UI,
   Playwright E2E.
 

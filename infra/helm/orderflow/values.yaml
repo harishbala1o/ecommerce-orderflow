@@ -6,6 +6,7 @@ nameOverride: ""
 images:
   hasura: orderflow/hasura:dev
   workflowService: orderflow/workflow-service:dev
+  inventoryService: orderflow/inventory-service:dev
   web: orderflow/web:dev
   postgres: postgres:16-alpine
   keycloak: quay.io/keycloak/keycloak:25.0
@@ -53,6 +54,17 @@ workflowService:
     targetCPUUtilizationPercentage: 75
   networkPolicy:
     enabled: true # only Hasura may reach the service
+
+inventoryService:
+  replicas: 2
+  # Separate database, so the boundary is enforced by PostgreSQL itself.
+  databaseName: ecommerce_orderflow_inventory
+  reservationTtlSeconds: 300
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: "500m", memory: 256Mi }
+  networkPolicy:
+    enabled: true # only the workflow service and Hasura may reach it
 
 keycloak:
   enabled: true

@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs+alerting done. Further Phase 3 items optional.
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs, rate limiting and the inventory bounded context done.
 >
 > **Visual architecture guide:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
 > diagrams, the request lifecycle, the test plan, and the Google Cloud deployment guide.
@@ -305,6 +305,18 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-08-12 (rate limiting + inventory)** — Per-user rate limiting on both services
+  (30/min actions, 60/min inventory), with event handlers, health and metrics deliberately
+  exempt so retries and probes are never throttled; throttles cannot burn the error budget
+  because guards run before the metrics interceptor. New `apps/inventory-service` (port
+  3002) as a genuine second bounded context with its **own database**: reserved-versus-
+  available stock, reserve/release/commit, append-only stock_movements, low-stock alerts
+  with suggested reorder quantities, and a receive-stock path. `products.stock_qty` dropped.
+  Placement is now a saga with a compensating release and an expiry sweeper. A second Event
+  Trigger on order_events gives one table two independent consumers. The inventory database
+  is a second tracked Hasura source. New ADRs 0007 and 0008; ADR 0005 amended. 67 tests.
+  Also fixed a latent M4 bug: select_permissions were defined for Hasura's admin role,
+  which it rejects.
 - **2026-07-30 (docs)** — Added docs/ARCHITECTURE.md: a visual architecture and onboarding
   guide written for readers new to software engineering. 14 validated mermaid diagrams
   (system overview, request path, observability, data model, state machine, four request
