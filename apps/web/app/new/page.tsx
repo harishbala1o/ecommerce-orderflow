@@ -16,6 +16,11 @@ export default function NewOrderPage() {
   if (error) return <p className="text-sm text-rose-700">Could not load products: {error.message}</p>;
 
   const products = data?.products ?? [];
+  // Availability comes from the inventory context, joined on the client because
+  // the two live in separate databases and cannot be joined in SQL.
+  const availableByProduct = new Map(
+    (data?.stock_availability ?? []).map((s) => [s.product_id, s.available ?? 0]),
+  );
   const items = Object.entries(quantities)
     .filter(([, qty]) => qty > 0)
     .map(([productId, quantity]) => ({ productId, quantity }));
@@ -44,7 +49,7 @@ export default function NewOrderPage() {
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-2.5 font-medium">Product</th>
-              <th className="px-4 py-2.5 font-medium">In stock</th>
+              <th className="px-4 py-2.5 font-medium">Available</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit price</th>
               <th className="px-4 py-2.5 text-right font-medium">Quantity</th>
             </tr>
@@ -56,13 +61,20 @@ export default function NewOrderPage() {
                   <p className="font-medium">{p.name}</p>
                   <p className="text-xs text-slate-500">{p.description}</p>
                 </td>
-                <td className="px-4 py-2.5 text-slate-600">{p.stock_qty}</td>
+                <td className="px-4 py-2.5 text-slate-600">
+                  {(availableByProduct.get(p.id) ?? 0) > 0 ? (
+                    availableByProduct.get(p.id)
+                  ) : (
+                    <span className="text-rose-700">Out of stock</span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{formatMoney(p.unit_price_cents)}</td>
                 <td className="px-4 py-2.5 text-right">
                   <input
                     type="number"
                     min={0}
-                    max={p.stock_qty}
+                    max={availableByProduct.get(p.id) ?? 0}
+                    disabled={(availableByProduct.get(p.id) ?? 0) <= 0}
                     value={quantities[p.id] ?? 0}
                     onChange={(e) => setQty(p.id, Number(e.target.value))}
                     aria-label={`Quantity of ${p.name}`}

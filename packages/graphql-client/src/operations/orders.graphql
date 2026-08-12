@@ -52,7 +52,12 @@ query ProductsList {
     name
     description
     unit_price_cents
-    stock_qty
+  }
+  # Stock lives in the inventory bounded context, exposed as a read model that
+  # publishes availability without revealing on-hand versus reserved.
+  stock_availability {
+    product_id
+    available
   }
 }
 

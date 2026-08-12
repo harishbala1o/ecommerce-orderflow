@@ -14,6 +14,8 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  alert_level: { input: any; output: any; }
+  alert_status: { input: any; output: any; }
   order_status: { input: any; output: any; }
   timestamptz: { input: string; output: string; }
   uuid: { input: string; output: string; }
@@ -76,6 +78,32 @@ export type String_Comparison_Exp = {
   _similar?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Boolean expression to compare columns of type "alert_level". All fields are combined with logical 'AND'. */
+export type Alert_Level_Comparison_Exp = {
+  _eq?: InputMaybe<Scalars['alert_level']['input']>;
+  _gt?: InputMaybe<Scalars['alert_level']['input']>;
+  _gte?: InputMaybe<Scalars['alert_level']['input']>;
+  _in?: InputMaybe<Array<Scalars['alert_level']['input']>>;
+  _is_null?: InputMaybe<Scalars['Boolean']['input']>;
+  _lt?: InputMaybe<Scalars['alert_level']['input']>;
+  _lte?: InputMaybe<Scalars['alert_level']['input']>;
+  _neq?: InputMaybe<Scalars['alert_level']['input']>;
+  _nin?: InputMaybe<Array<Scalars['alert_level']['input']>>;
+};
+
+/** Boolean expression to compare columns of type "alert_status". All fields are combined with logical 'AND'. */
+export type Alert_Status_Comparison_Exp = {
+  _eq?: InputMaybe<Scalars['alert_status']['input']>;
+  _gt?: InputMaybe<Scalars['alert_status']['input']>;
+  _gte?: InputMaybe<Scalars['alert_status']['input']>;
+  _in?: InputMaybe<Array<Scalars['alert_status']['input']>>;
+  _is_null?: InputMaybe<Scalars['Boolean']['input']>;
+  _lt?: InputMaybe<Scalars['alert_status']['input']>;
+  _lte?: InputMaybe<Scalars['alert_status']['input']>;
+  _neq?: InputMaybe<Scalars['alert_status']['input']>;
+  _nin?: InputMaybe<Array<Scalars['alert_status']['input']>>;
+};
+
 /** ordering argument of a cursor */
 export enum Cursor_Ordering {
   /** ascending ordering of the cursor */
@@ -103,6 +131,16 @@ export type Mutation_Root = {
   delete_products?: Maybe<Products_Mutation_Response>;
   /** delete single row from the table: "products" */
   delete_products_by_pk?: Maybe<Products>;
+  /** delete data from the table: "stock_alerts" */
+  delete_stock_alerts?: Maybe<Stock_Alerts_Mutation_Response>;
+  /** delete single row from the table: "stock_alerts" */
+  delete_stock_alerts_by_pk?: Maybe<Stock_Alerts>;
+  /** delete data from the table: "stock_availability" */
+  delete_stock_availability?: Maybe<Stock_Availability_Mutation_Response>;
+  /** delete data from the table: "stock_items" */
+  delete_stock_items?: Maybe<Stock_Items_Mutation_Response>;
+  /** delete single row from the table: "stock_items" */
+  delete_stock_items_by_pk?: Maybe<Stock_Items>;
   /** delete data from the table: "users" */
   delete_users?: Maybe<Users_Mutation_Response>;
   /** delete single row from the table: "users" */
@@ -123,6 +161,18 @@ export type Mutation_Root = {
   insert_products?: Maybe<Products_Mutation_Response>;
   /** insert a single row into the table: "products" */
   insert_products_one?: Maybe<Products>;
+  /** insert data into the table: "stock_alerts" */
+  insert_stock_alerts?: Maybe<Stock_Alerts_Mutation_Response>;
+  /** insert a single row into the table: "stock_alerts" */
+  insert_stock_alerts_one?: Maybe<Stock_Alerts>;
+  /** insert data into the table: "stock_availability" */
+  insert_stock_availability?: Maybe<Stock_Availability_Mutation_Response>;
+  /** insert a single row into the table: "stock_availability" */
+  insert_stock_availability_one?: Maybe<Stock_Availability>;
+  /** insert data into the table: "stock_items" */
+  insert_stock_items?: Maybe<Stock_Items_Mutation_Response>;
+  /** insert a single row into the table: "stock_items" */
+  insert_stock_items_one?: Maybe<Stock_Items>;
   /** insert data into the table: "users" */
   insert_users?: Maybe<Users_Mutation_Response>;
   /** insert a single row into the table: "users" */
@@ -155,6 +205,22 @@ export type Mutation_Root = {
   update_products_by_pk?: Maybe<Products>;
   /** update multiples rows of table: "products" */
   update_products_many?: Maybe<Array<Maybe<Products_Mutation_Response>>>;
+  /** update data of the table: "stock_alerts" */
+  update_stock_alerts?: Maybe<Stock_Alerts_Mutation_Response>;
+  /** update single row of the table: "stock_alerts" */
+  update_stock_alerts_by_pk?: Maybe<Stock_Alerts>;
+  /** update multiples rows of table: "stock_alerts" */
+  update_stock_alerts_many?: Maybe<Array<Maybe<Stock_Alerts_Mutation_Response>>>;
+  /** update data of the table: "stock_availability" */
+  update_stock_availability?: Maybe<Stock_Availability_Mutation_Response>;
+  /** update multiples rows of table: "stock_availability" */
+  update_stock_availability_many?: Maybe<Array<Maybe<Stock_Availability_Mutation_Response>>>;
+  /** update data of the table: "stock_items" */
+  update_stock_items?: Maybe<Stock_Items_Mutation_Response>;
+  /** update single row of the table: "stock_items" */
+  update_stock_items_by_pk?: Maybe<Stock_Items>;
+  /** update multiples rows of table: "stock_items" */
+  update_stock_items_many?: Maybe<Array<Maybe<Stock_Items_Mutation_Response>>>;
   /** update data of the table: "users" */
   update_users?: Maybe<Users_Mutation_Response>;
   /** update single row of the table: "users" */
@@ -209,6 +275,36 @@ export type Mutation_RootDelete_ProductsArgs = {
 /** mutation root */
 export type Mutation_RootDelete_Products_By_PkArgs = {
   id: Scalars['uuid']['input'];
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Stock_AlertsArgs = {
+  where: Stock_Alerts_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Stock_Alerts_By_PkArgs = {
+  id: Scalars['uuid']['input'];
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Stock_AvailabilityArgs = {
+  where: Stock_Availability_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Stock_ItemsArgs = {
+  where: Stock_Items_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Stock_Items_By_PkArgs = {
+  product_id: Scalars['uuid']['input'];
 };
 
 
@@ -277,6 +373,46 @@ export type Mutation_RootInsert_ProductsArgs = {
 export type Mutation_RootInsert_Products_OneArgs = {
   object: Products_Insert_Input;
   on_conflict?: InputMaybe<Products_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_AlertsArgs = {
+  objects: Array<Stock_Alerts_Insert_Input>;
+  on_conflict?: InputMaybe<Stock_Alerts_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_Alerts_OneArgs = {
+  object: Stock_Alerts_Insert_Input;
+  on_conflict?: InputMaybe<Stock_Alerts_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_AvailabilityArgs = {
+  objects: Array<Stock_Availability_Insert_Input>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_Availability_OneArgs = {
+  object: Stock_Availability_Insert_Input;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_ItemsArgs = {
+  objects: Array<Stock_Items_Insert_Input>;
+  on_conflict?: InputMaybe<Stock_Items_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Stock_Items_OneArgs = {
+  object: Stock_Items_Insert_Input;
+  on_conflict?: InputMaybe<Stock_Items_On_Conflict>;
 };
 
 
@@ -390,6 +526,64 @@ export type Mutation_RootUpdate_Products_By_PkArgs = {
 /** mutation root */
 export type Mutation_RootUpdate_Products_ManyArgs = {
   updates: Array<Products_Updates>;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_AlertsArgs = {
+  _inc?: InputMaybe<Stock_Alerts_Inc_Input>;
+  _set?: InputMaybe<Stock_Alerts_Set_Input>;
+  where: Stock_Alerts_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_Alerts_By_PkArgs = {
+  _inc?: InputMaybe<Stock_Alerts_Inc_Input>;
+  _set?: InputMaybe<Stock_Alerts_Set_Input>;
+  pk_columns: Stock_Alerts_Pk_Columns_Input;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_Alerts_ManyArgs = {
+  updates: Array<Stock_Alerts_Updates>;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_AvailabilityArgs = {
+  _inc?: InputMaybe<Stock_Availability_Inc_Input>;
+  _set?: InputMaybe<Stock_Availability_Set_Input>;
+  where: Stock_Availability_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_Availability_ManyArgs = {
+  updates: Array<Stock_Availability_Updates>;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_ItemsArgs = {
+  _inc?: InputMaybe<Stock_Items_Inc_Input>;
+  _set?: InputMaybe<Stock_Items_Set_Input>;
+  where: Stock_Items_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_Items_By_PkArgs = {
+  _inc?: InputMaybe<Stock_Items_Inc_Input>;
+  _set?: InputMaybe<Stock_Items_Set_Input>;
+  pk_columns: Stock_Items_Pk_Columns_Input;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Stock_Items_ManyArgs = {
+  updates: Array<Stock_Items_Updates>;
 };
 
 
@@ -1494,7 +1688,6 @@ export type Products = {
   id: Scalars['uuid']['output'];
   name: Scalars['String']['output'];
   sku: Scalars['String']['output'];
-  stock_qty: Scalars['Int']['output'];
   unit_price_cents: Scalars['Int']['output'];
 };
 
@@ -1531,7 +1724,6 @@ export type Products_Aggregate_FieldsCountArgs = {
 /** aggregate avg on columns */
 export type Products_Avg_Fields = {
   __typename?: 'products_avg_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -1545,7 +1737,6 @@ export type Products_Bool_Exp = {
   id?: InputMaybe<Uuid_Comparison_Exp>;
   name?: InputMaybe<String_Comparison_Exp>;
   sku?: InputMaybe<String_Comparison_Exp>;
-  stock_qty?: InputMaybe<Int_Comparison_Exp>;
   unit_price_cents?: InputMaybe<Int_Comparison_Exp>;
 };
 
@@ -1559,7 +1750,6 @@ export enum Products_Constraint {
 
 /** input type for incrementing numeric columns in table "products" */
 export type Products_Inc_Input = {
-  stock_qty?: InputMaybe<Scalars['Int']['input']>;
   unit_price_cents?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -1570,7 +1760,6 @@ export type Products_Insert_Input = {
   id?: InputMaybe<Scalars['uuid']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   sku?: InputMaybe<Scalars['String']['input']>;
-  stock_qty?: InputMaybe<Scalars['Int']['input']>;
   unit_price_cents?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -1582,7 +1771,6 @@ export type Products_Max_Fields = {
   id?: Maybe<Scalars['uuid']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   sku?: Maybe<Scalars['String']['output']>;
-  stock_qty?: Maybe<Scalars['Int']['output']>;
   unit_price_cents?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1594,7 +1782,6 @@ export type Products_Min_Fields = {
   id?: Maybe<Scalars['uuid']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   sku?: Maybe<Scalars['String']['output']>;
-  stock_qty?: Maybe<Scalars['Int']['output']>;
   unit_price_cents?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1628,7 +1815,6 @@ export type Products_Order_By = {
   id?: InputMaybe<Order_By>;
   name?: InputMaybe<Order_By>;
   sku?: InputMaybe<Order_By>;
-  stock_qty?: InputMaybe<Order_By>;
   unit_price_cents?: InputMaybe<Order_By>;
 };
 
@@ -1650,8 +1836,6 @@ export enum Products_Select_Column {
   /** column name */
   Sku = 'sku',
   /** column name */
-  StockQty = 'stock_qty',
-  /** column name */
   UnitPriceCents = 'unit_price_cents'
 }
 
@@ -1662,28 +1846,24 @@ export type Products_Set_Input = {
   id?: InputMaybe<Scalars['uuid']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   sku?: InputMaybe<Scalars['String']['input']>;
-  stock_qty?: InputMaybe<Scalars['Int']['input']>;
   unit_price_cents?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** aggregate stddev on columns */
 export type Products_Stddev_Fields = {
   __typename?: 'products_stddev_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
 /** aggregate stddev_pop on columns */
 export type Products_Stddev_Pop_Fields = {
   __typename?: 'products_stddev_pop_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
 /** aggregate stddev_samp on columns */
 export type Products_Stddev_Samp_Fields = {
   __typename?: 'products_stddev_samp_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -1702,14 +1882,12 @@ export type Products_Stream_Cursor_Value_Input = {
   id?: InputMaybe<Scalars['uuid']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   sku?: InputMaybe<Scalars['String']['input']>;
-  stock_qty?: InputMaybe<Scalars['Int']['input']>;
   unit_price_cents?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** aggregate sum on columns */
 export type Products_Sum_Fields = {
   __typename?: 'products_sum_fields';
-  stock_qty?: Maybe<Scalars['Int']['output']>;
   unit_price_cents?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1726,8 +1904,6 @@ export enum Products_Update_Column {
   /** column name */
   Sku = 'sku',
   /** column name */
-  StockQty = 'stock_qty',
-  /** column name */
   UnitPriceCents = 'unit_price_cents'
 }
 
@@ -1743,21 +1919,18 @@ export type Products_Updates = {
 /** aggregate var_pop on columns */
 export type Products_Var_Pop_Fields = {
   __typename?: 'products_var_pop_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
 /** aggregate var_samp on columns */
 export type Products_Var_Samp_Fields = {
   __typename?: 'products_var_samp_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
 /** aggregate variance on columns */
 export type Products_Variance_Fields = {
   __typename?: 'products_variance_fields';
-  stock_qty?: Maybe<Scalars['Float']['output']>;
   unit_price_cents?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -1787,6 +1960,22 @@ export type Query_Root = {
   products_aggregate: Products_Aggregate;
   /** fetch data from the table: "products" using primary key columns */
   products_by_pk?: Maybe<Products>;
+  /** fetch data from the table: "stock_alerts" */
+  stock_alerts: Array<Stock_Alerts>;
+  /** fetch aggregated fields from the table: "stock_alerts" */
+  stock_alerts_aggregate: Stock_Alerts_Aggregate;
+  /** fetch data from the table: "stock_alerts" using primary key columns */
+  stock_alerts_by_pk?: Maybe<Stock_Alerts>;
+  /** fetch data from the table: "stock_availability" */
+  stock_availability: Array<Stock_Availability>;
+  /** fetch aggregated fields from the table: "stock_availability" */
+  stock_availability_aggregate: Stock_Availability_Aggregate;
+  /** fetch data from the table: "stock_items" */
+  stock_items: Array<Stock_Items>;
+  /** fetch aggregated fields from the table: "stock_items" */
+  stock_items_aggregate: Stock_Items_Aggregate;
+  /** fetch data from the table: "stock_items" using primary key columns */
+  stock_items_by_pk?: Maybe<Stock_Items>;
   /** fetch data from the table: "users" */
   users: Array<Users>;
   /** fetch aggregated fields from the table: "users" */
@@ -1888,6 +2077,70 @@ export type Query_RootProducts_By_PkArgs = {
 };
 
 
+export type Query_RootStock_AlertsArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Alerts_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Alerts_Order_By>>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+
+export type Query_RootStock_Alerts_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Alerts_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Alerts_Order_By>>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+
+export type Query_RootStock_Alerts_By_PkArgs = {
+  id: Scalars['uuid']['input'];
+};
+
+
+export type Query_RootStock_AvailabilityArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Availability_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Availability_Order_By>>;
+  where?: InputMaybe<Stock_Availability_Bool_Exp>;
+};
+
+
+export type Query_RootStock_Availability_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Availability_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Availability_Order_By>>;
+  where?: InputMaybe<Stock_Availability_Bool_Exp>;
+};
+
+
+export type Query_RootStock_ItemsArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Items_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Items_Order_By>>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
+};
+
+
+export type Query_RootStock_Items_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Items_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Items_Order_By>>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
+};
+
+
+export type Query_RootStock_Items_By_PkArgs = {
+  product_id: Scalars['uuid']['input'];
+};
+
+
 export type Query_RootUsersArgs = {
   distinct_on?: InputMaybe<Array<Users_Select_Column>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -1908,6 +2161,786 @@ export type Query_RootUsers_AggregateArgs = {
 
 export type Query_RootUsers_By_PkArgs = {
   id: Scalars['uuid']['input'];
+};
+
+/** columns and relationships of "stock_alerts" */
+export type Stock_Alerts = {
+  __typename?: 'stock_alerts';
+  available: Scalars['Int']['output'];
+  created_at: Scalars['timestamptz']['output'];
+  id: Scalars['uuid']['output'];
+  level: Scalars['alert_level']['output'];
+  product_id: Scalars['uuid']['output'];
+  reorder_level: Scalars['Int']['output'];
+  resolved_at?: Maybe<Scalars['timestamptz']['output']>;
+  sku: Scalars['String']['output'];
+  status: Scalars['alert_status']['output'];
+  suggested_qty: Scalars['Int']['output'];
+};
+
+/** aggregated selection of "stock_alerts" */
+export type Stock_Alerts_Aggregate = {
+  __typename?: 'stock_alerts_aggregate';
+  aggregate?: Maybe<Stock_Alerts_Aggregate_Fields>;
+  nodes: Array<Stock_Alerts>;
+};
+
+/** aggregate fields of "stock_alerts" */
+export type Stock_Alerts_Aggregate_Fields = {
+  __typename?: 'stock_alerts_aggregate_fields';
+  avg?: Maybe<Stock_Alerts_Avg_Fields>;
+  count: Scalars['Int']['output'];
+  max?: Maybe<Stock_Alerts_Max_Fields>;
+  min?: Maybe<Stock_Alerts_Min_Fields>;
+  stddev?: Maybe<Stock_Alerts_Stddev_Fields>;
+  stddev_pop?: Maybe<Stock_Alerts_Stddev_Pop_Fields>;
+  stddev_samp?: Maybe<Stock_Alerts_Stddev_Samp_Fields>;
+  sum?: Maybe<Stock_Alerts_Sum_Fields>;
+  var_pop?: Maybe<Stock_Alerts_Var_Pop_Fields>;
+  var_samp?: Maybe<Stock_Alerts_Var_Samp_Fields>;
+  variance?: Maybe<Stock_Alerts_Variance_Fields>;
+};
+
+
+/** aggregate fields of "stock_alerts" */
+export type Stock_Alerts_Aggregate_FieldsCountArgs = {
+  columns?: InputMaybe<Array<Stock_Alerts_Select_Column>>;
+  distinct?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+/** aggregate avg on columns */
+export type Stock_Alerts_Avg_Fields = {
+  __typename?: 'stock_alerts_avg_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Boolean expression to filter rows from the table "stock_alerts". All fields are combined with a logical 'AND'. */
+export type Stock_Alerts_Bool_Exp = {
+  _and?: InputMaybe<Array<Stock_Alerts_Bool_Exp>>;
+  _not?: InputMaybe<Stock_Alerts_Bool_Exp>;
+  _or?: InputMaybe<Array<Stock_Alerts_Bool_Exp>>;
+  available?: InputMaybe<Int_Comparison_Exp>;
+  created_at?: InputMaybe<Timestamptz_Comparison_Exp>;
+  id?: InputMaybe<Uuid_Comparison_Exp>;
+  level?: InputMaybe<Alert_Level_Comparison_Exp>;
+  product_id?: InputMaybe<Uuid_Comparison_Exp>;
+  reorder_level?: InputMaybe<Int_Comparison_Exp>;
+  resolved_at?: InputMaybe<Timestamptz_Comparison_Exp>;
+  sku?: InputMaybe<String_Comparison_Exp>;
+  status?: InputMaybe<Alert_Status_Comparison_Exp>;
+  suggested_qty?: InputMaybe<Int_Comparison_Exp>;
+};
+
+/** unique or primary key constraints on table "stock_alerts" */
+export enum Stock_Alerts_Constraint {
+  /** unique or primary key constraint on columns "product_id" */
+  StockAlertsOneOpenPerProduct = 'stock_alerts_one_open_per_product',
+  /** unique or primary key constraint on columns "id" */
+  StockAlertsPkey = 'stock_alerts_pkey'
+}
+
+/** input type for incrementing numeric columns in table "stock_alerts" */
+export type Stock_Alerts_Inc_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  suggested_qty?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** input type for inserting data into table "stock_alerts" */
+export type Stock_Alerts_Insert_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  created_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  id?: InputMaybe<Scalars['uuid']['input']>;
+  level?: InputMaybe<Scalars['alert_level']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  resolved_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['alert_status']['input']>;
+  suggested_qty?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** aggregate max on columns */
+export type Stock_Alerts_Max_Fields = {
+  __typename?: 'stock_alerts_max_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+  created_at?: Maybe<Scalars['timestamptz']['output']>;
+  id?: Maybe<Scalars['uuid']['output']>;
+  level?: Maybe<Scalars['alert_level']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  resolved_at?: Maybe<Scalars['timestamptz']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['alert_status']['output']>;
+  suggested_qty?: Maybe<Scalars['Int']['output']>;
+};
+
+/** aggregate min on columns */
+export type Stock_Alerts_Min_Fields = {
+  __typename?: 'stock_alerts_min_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+  created_at?: Maybe<Scalars['timestamptz']['output']>;
+  id?: Maybe<Scalars['uuid']['output']>;
+  level?: Maybe<Scalars['alert_level']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  resolved_at?: Maybe<Scalars['timestamptz']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['alert_status']['output']>;
+  suggested_qty?: Maybe<Scalars['Int']['output']>;
+};
+
+/** response of any mutation on the table "stock_alerts" */
+export type Stock_Alerts_Mutation_Response = {
+  __typename?: 'stock_alerts_mutation_response';
+  /** number of rows affected by the mutation */
+  affected_rows: Scalars['Int']['output'];
+  /** data from the rows affected by the mutation */
+  returning: Array<Stock_Alerts>;
+};
+
+/** on_conflict condition type for table "stock_alerts" */
+export type Stock_Alerts_On_Conflict = {
+  constraint: Stock_Alerts_Constraint;
+  update_columns?: Array<Stock_Alerts_Update_Column>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+/** Ordering options when selecting data from "stock_alerts". */
+export type Stock_Alerts_Order_By = {
+  available?: InputMaybe<Order_By>;
+  created_at?: InputMaybe<Order_By>;
+  id?: InputMaybe<Order_By>;
+  level?: InputMaybe<Order_By>;
+  product_id?: InputMaybe<Order_By>;
+  reorder_level?: InputMaybe<Order_By>;
+  resolved_at?: InputMaybe<Order_By>;
+  sku?: InputMaybe<Order_By>;
+  status?: InputMaybe<Order_By>;
+  suggested_qty?: InputMaybe<Order_By>;
+};
+
+/** primary key columns input for table: stock_alerts */
+export type Stock_Alerts_Pk_Columns_Input = {
+  id: Scalars['uuid']['input'];
+};
+
+/** select columns of table "stock_alerts" */
+export enum Stock_Alerts_Select_Column {
+  /** column name */
+  Available = 'available',
+  /** column name */
+  CreatedAt = 'created_at',
+  /** column name */
+  Id = 'id',
+  /** column name */
+  Level = 'level',
+  /** column name */
+  ProductId = 'product_id',
+  /** column name */
+  ReorderLevel = 'reorder_level',
+  /** column name */
+  ResolvedAt = 'resolved_at',
+  /** column name */
+  Sku = 'sku',
+  /** column name */
+  Status = 'status',
+  /** column name */
+  SuggestedQty = 'suggested_qty'
+}
+
+/** input type for updating data in table "stock_alerts" */
+export type Stock_Alerts_Set_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  created_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  id?: InputMaybe<Scalars['uuid']['input']>;
+  level?: InputMaybe<Scalars['alert_level']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  resolved_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['alert_status']['input']>;
+  suggested_qty?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** aggregate stddev on columns */
+export type Stock_Alerts_Stddev_Fields = {
+  __typename?: 'stock_alerts_stddev_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_pop on columns */
+export type Stock_Alerts_Stddev_Pop_Fields = {
+  __typename?: 'stock_alerts_stddev_pop_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_samp on columns */
+export type Stock_Alerts_Stddev_Samp_Fields = {
+  __typename?: 'stock_alerts_stddev_samp_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Streaming cursor of the table "stock_alerts" */
+export type Stock_Alerts_Stream_Cursor_Input = {
+  /** Stream column input with initial value */
+  initial_value: Stock_Alerts_Stream_Cursor_Value_Input;
+  /** cursor ordering */
+  ordering?: InputMaybe<Cursor_Ordering>;
+};
+
+/** Initial value of the column from where the streaming should start */
+export type Stock_Alerts_Stream_Cursor_Value_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  created_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  id?: InputMaybe<Scalars['uuid']['input']>;
+  level?: InputMaybe<Scalars['alert_level']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  resolved_at?: InputMaybe<Scalars['timestamptz']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['alert_status']['input']>;
+  suggested_qty?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** aggregate sum on columns */
+export type Stock_Alerts_Sum_Fields = {
+  __typename?: 'stock_alerts_sum_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  suggested_qty?: Maybe<Scalars['Int']['output']>;
+};
+
+/** update columns of table "stock_alerts" */
+export enum Stock_Alerts_Update_Column {
+  /** column name */
+  Available = 'available',
+  /** column name */
+  CreatedAt = 'created_at',
+  /** column name */
+  Id = 'id',
+  /** column name */
+  Level = 'level',
+  /** column name */
+  ProductId = 'product_id',
+  /** column name */
+  ReorderLevel = 'reorder_level',
+  /** column name */
+  ResolvedAt = 'resolved_at',
+  /** column name */
+  Sku = 'sku',
+  /** column name */
+  Status = 'status',
+  /** column name */
+  SuggestedQty = 'suggested_qty'
+}
+
+export type Stock_Alerts_Updates = {
+  /** increments the numeric columns with given value of the filtered values */
+  _inc?: InputMaybe<Stock_Alerts_Inc_Input>;
+  /** sets the columns of the filtered rows to the given values */
+  _set?: InputMaybe<Stock_Alerts_Set_Input>;
+  /** filter the rows which have to be updated */
+  where: Stock_Alerts_Bool_Exp;
+};
+
+/** aggregate var_pop on columns */
+export type Stock_Alerts_Var_Pop_Fields = {
+  __typename?: 'stock_alerts_var_pop_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate var_samp on columns */
+export type Stock_Alerts_Var_Samp_Fields = {
+  __typename?: 'stock_alerts_var_samp_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate variance on columns */
+export type Stock_Alerts_Variance_Fields = {
+  __typename?: 'stock_alerts_variance_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  suggested_qty?: Maybe<Scalars['Float']['output']>;
+};
+
+/** columns and relationships of "stock_availability" */
+export type Stock_Availability = {
+  __typename?: 'stock_availability';
+  available?: Maybe<Scalars['Int']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+};
+
+/** aggregated selection of "stock_availability" */
+export type Stock_Availability_Aggregate = {
+  __typename?: 'stock_availability_aggregate';
+  aggregate?: Maybe<Stock_Availability_Aggregate_Fields>;
+  nodes: Array<Stock_Availability>;
+};
+
+/** aggregate fields of "stock_availability" */
+export type Stock_Availability_Aggregate_Fields = {
+  __typename?: 'stock_availability_aggregate_fields';
+  avg?: Maybe<Stock_Availability_Avg_Fields>;
+  count: Scalars['Int']['output'];
+  max?: Maybe<Stock_Availability_Max_Fields>;
+  min?: Maybe<Stock_Availability_Min_Fields>;
+  stddev?: Maybe<Stock_Availability_Stddev_Fields>;
+  stddev_pop?: Maybe<Stock_Availability_Stddev_Pop_Fields>;
+  stddev_samp?: Maybe<Stock_Availability_Stddev_Samp_Fields>;
+  sum?: Maybe<Stock_Availability_Sum_Fields>;
+  var_pop?: Maybe<Stock_Availability_Var_Pop_Fields>;
+  var_samp?: Maybe<Stock_Availability_Var_Samp_Fields>;
+  variance?: Maybe<Stock_Availability_Variance_Fields>;
+};
+
+
+/** aggregate fields of "stock_availability" */
+export type Stock_Availability_Aggregate_FieldsCountArgs = {
+  columns?: InputMaybe<Array<Stock_Availability_Select_Column>>;
+  distinct?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+/** aggregate avg on columns */
+export type Stock_Availability_Avg_Fields = {
+  __typename?: 'stock_availability_avg_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Boolean expression to filter rows from the table "stock_availability". All fields are combined with a logical 'AND'. */
+export type Stock_Availability_Bool_Exp = {
+  _and?: InputMaybe<Array<Stock_Availability_Bool_Exp>>;
+  _not?: InputMaybe<Stock_Availability_Bool_Exp>;
+  _or?: InputMaybe<Array<Stock_Availability_Bool_Exp>>;
+  available?: InputMaybe<Int_Comparison_Exp>;
+  product_id?: InputMaybe<Uuid_Comparison_Exp>;
+  sku?: InputMaybe<String_Comparison_Exp>;
+};
+
+/** input type for incrementing numeric columns in table "stock_availability" */
+export type Stock_Availability_Inc_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** input type for inserting data into table "stock_availability" */
+export type Stock_Availability_Insert_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** aggregate max on columns */
+export type Stock_Availability_Max_Fields = {
+  __typename?: 'stock_availability_max_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+};
+
+/** aggregate min on columns */
+export type Stock_Availability_Min_Fields = {
+  __typename?: 'stock_availability_min_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+};
+
+/** response of any mutation on the table "stock_availability" */
+export type Stock_Availability_Mutation_Response = {
+  __typename?: 'stock_availability_mutation_response';
+  /** number of rows affected by the mutation */
+  affected_rows: Scalars['Int']['output'];
+  /** data from the rows affected by the mutation */
+  returning: Array<Stock_Availability>;
+};
+
+/** Ordering options when selecting data from "stock_availability". */
+export type Stock_Availability_Order_By = {
+  available?: InputMaybe<Order_By>;
+  product_id?: InputMaybe<Order_By>;
+  sku?: InputMaybe<Order_By>;
+};
+
+/** select columns of table "stock_availability" */
+export enum Stock_Availability_Select_Column {
+  /** column name */
+  Available = 'available',
+  /** column name */
+  ProductId = 'product_id',
+  /** column name */
+  Sku = 'sku'
+}
+
+/** input type for updating data in table "stock_availability" */
+export type Stock_Availability_Set_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** aggregate stddev on columns */
+export type Stock_Availability_Stddev_Fields = {
+  __typename?: 'stock_availability_stddev_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_pop on columns */
+export type Stock_Availability_Stddev_Pop_Fields = {
+  __typename?: 'stock_availability_stddev_pop_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_samp on columns */
+export type Stock_Availability_Stddev_Samp_Fields = {
+  __typename?: 'stock_availability_stddev_samp_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Streaming cursor of the table "stock_availability" */
+export type Stock_Availability_Stream_Cursor_Input = {
+  /** Stream column input with initial value */
+  initial_value: Stock_Availability_Stream_Cursor_Value_Input;
+  /** cursor ordering */
+  ordering?: InputMaybe<Cursor_Ordering>;
+};
+
+/** Initial value of the column from where the streaming should start */
+export type Stock_Availability_Stream_Cursor_Value_Input = {
+  available?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** aggregate sum on columns */
+export type Stock_Availability_Sum_Fields = {
+  __typename?: 'stock_availability_sum_fields';
+  available?: Maybe<Scalars['Int']['output']>;
+};
+
+export type Stock_Availability_Updates = {
+  /** increments the numeric columns with given value of the filtered values */
+  _inc?: InputMaybe<Stock_Availability_Inc_Input>;
+  /** sets the columns of the filtered rows to the given values */
+  _set?: InputMaybe<Stock_Availability_Set_Input>;
+  /** filter the rows which have to be updated */
+  where: Stock_Availability_Bool_Exp;
+};
+
+/** aggregate var_pop on columns */
+export type Stock_Availability_Var_Pop_Fields = {
+  __typename?: 'stock_availability_var_pop_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate var_samp on columns */
+export type Stock_Availability_Var_Samp_Fields = {
+  __typename?: 'stock_availability_var_samp_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate variance on columns */
+export type Stock_Availability_Variance_Fields = {
+  __typename?: 'stock_availability_variance_fields';
+  available?: Maybe<Scalars['Float']['output']>;
+};
+
+/** columns and relationships of "stock_items" */
+export type Stock_Items = {
+  __typename?: 'stock_items';
+  on_hand: Scalars['Int']['output'];
+  product_id: Scalars['uuid']['output'];
+  reorder_level: Scalars['Int']['output'];
+  reorder_qty: Scalars['Int']['output'];
+  reserved: Scalars['Int']['output'];
+  sku: Scalars['String']['output'];
+  updated_at: Scalars['timestamptz']['output'];
+};
+
+/** aggregated selection of "stock_items" */
+export type Stock_Items_Aggregate = {
+  __typename?: 'stock_items_aggregate';
+  aggregate?: Maybe<Stock_Items_Aggregate_Fields>;
+  nodes: Array<Stock_Items>;
+};
+
+/** aggregate fields of "stock_items" */
+export type Stock_Items_Aggregate_Fields = {
+  __typename?: 'stock_items_aggregate_fields';
+  avg?: Maybe<Stock_Items_Avg_Fields>;
+  count: Scalars['Int']['output'];
+  max?: Maybe<Stock_Items_Max_Fields>;
+  min?: Maybe<Stock_Items_Min_Fields>;
+  stddev?: Maybe<Stock_Items_Stddev_Fields>;
+  stddev_pop?: Maybe<Stock_Items_Stddev_Pop_Fields>;
+  stddev_samp?: Maybe<Stock_Items_Stddev_Samp_Fields>;
+  sum?: Maybe<Stock_Items_Sum_Fields>;
+  var_pop?: Maybe<Stock_Items_Var_Pop_Fields>;
+  var_samp?: Maybe<Stock_Items_Var_Samp_Fields>;
+  variance?: Maybe<Stock_Items_Variance_Fields>;
+};
+
+
+/** aggregate fields of "stock_items" */
+export type Stock_Items_Aggregate_FieldsCountArgs = {
+  columns?: InputMaybe<Array<Stock_Items_Select_Column>>;
+  distinct?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+/** aggregate avg on columns */
+export type Stock_Items_Avg_Fields = {
+  __typename?: 'stock_items_avg_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Boolean expression to filter rows from the table "stock_items". All fields are combined with a logical 'AND'. */
+export type Stock_Items_Bool_Exp = {
+  _and?: InputMaybe<Array<Stock_Items_Bool_Exp>>;
+  _not?: InputMaybe<Stock_Items_Bool_Exp>;
+  _or?: InputMaybe<Array<Stock_Items_Bool_Exp>>;
+  on_hand?: InputMaybe<Int_Comparison_Exp>;
+  product_id?: InputMaybe<Uuid_Comparison_Exp>;
+  reorder_level?: InputMaybe<Int_Comparison_Exp>;
+  reorder_qty?: InputMaybe<Int_Comparison_Exp>;
+  reserved?: InputMaybe<Int_Comparison_Exp>;
+  sku?: InputMaybe<String_Comparison_Exp>;
+  updated_at?: InputMaybe<Timestamptz_Comparison_Exp>;
+};
+
+/** unique or primary key constraints on table "stock_items" */
+export enum Stock_Items_Constraint {
+  /** unique or primary key constraint on columns "product_id" */
+  StockItemsPkey = 'stock_items_pkey',
+  /** unique or primary key constraint on columns "sku" */
+  StockItemsSkuKey = 'stock_items_sku_key'
+}
+
+/** input type for incrementing numeric columns in table "stock_items" */
+export type Stock_Items_Inc_Input = {
+  on_hand?: InputMaybe<Scalars['Int']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  reorder_qty?: InputMaybe<Scalars['Int']['input']>;
+  reserved?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** input type for inserting data into table "stock_items" */
+export type Stock_Items_Insert_Input = {
+  on_hand?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  reorder_qty?: InputMaybe<Scalars['Int']['input']>;
+  reserved?: InputMaybe<Scalars['Int']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  updated_at?: InputMaybe<Scalars['timestamptz']['input']>;
+};
+
+/** aggregate max on columns */
+export type Stock_Items_Max_Fields = {
+  __typename?: 'stock_items_max_fields';
+  on_hand?: Maybe<Scalars['Int']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  reorder_qty?: Maybe<Scalars['Int']['output']>;
+  reserved?: Maybe<Scalars['Int']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+  updated_at?: Maybe<Scalars['timestamptz']['output']>;
+};
+
+/** aggregate min on columns */
+export type Stock_Items_Min_Fields = {
+  __typename?: 'stock_items_min_fields';
+  on_hand?: Maybe<Scalars['Int']['output']>;
+  product_id?: Maybe<Scalars['uuid']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  reorder_qty?: Maybe<Scalars['Int']['output']>;
+  reserved?: Maybe<Scalars['Int']['output']>;
+  sku?: Maybe<Scalars['String']['output']>;
+  updated_at?: Maybe<Scalars['timestamptz']['output']>;
+};
+
+/** response of any mutation on the table "stock_items" */
+export type Stock_Items_Mutation_Response = {
+  __typename?: 'stock_items_mutation_response';
+  /** number of rows affected by the mutation */
+  affected_rows: Scalars['Int']['output'];
+  /** data from the rows affected by the mutation */
+  returning: Array<Stock_Items>;
+};
+
+/** on_conflict condition type for table "stock_items" */
+export type Stock_Items_On_Conflict = {
+  constraint: Stock_Items_Constraint;
+  update_columns?: Array<Stock_Items_Update_Column>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
+};
+
+/** Ordering options when selecting data from "stock_items". */
+export type Stock_Items_Order_By = {
+  on_hand?: InputMaybe<Order_By>;
+  product_id?: InputMaybe<Order_By>;
+  reorder_level?: InputMaybe<Order_By>;
+  reorder_qty?: InputMaybe<Order_By>;
+  reserved?: InputMaybe<Order_By>;
+  sku?: InputMaybe<Order_By>;
+  updated_at?: InputMaybe<Order_By>;
+};
+
+/** primary key columns input for table: stock_items */
+export type Stock_Items_Pk_Columns_Input = {
+  product_id: Scalars['uuid']['input'];
+};
+
+/** select columns of table "stock_items" */
+export enum Stock_Items_Select_Column {
+  /** column name */
+  OnHand = 'on_hand',
+  /** column name */
+  ProductId = 'product_id',
+  /** column name */
+  ReorderLevel = 'reorder_level',
+  /** column name */
+  ReorderQty = 'reorder_qty',
+  /** column name */
+  Reserved = 'reserved',
+  /** column name */
+  Sku = 'sku',
+  /** column name */
+  UpdatedAt = 'updated_at'
+}
+
+/** input type for updating data in table "stock_items" */
+export type Stock_Items_Set_Input = {
+  on_hand?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  reorder_qty?: InputMaybe<Scalars['Int']['input']>;
+  reserved?: InputMaybe<Scalars['Int']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  updated_at?: InputMaybe<Scalars['timestamptz']['input']>;
+};
+
+/** aggregate stddev on columns */
+export type Stock_Items_Stddev_Fields = {
+  __typename?: 'stock_items_stddev_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_pop on columns */
+export type Stock_Items_Stddev_Pop_Fields = {
+  __typename?: 'stock_items_stddev_pop_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_samp on columns */
+export type Stock_Items_Stddev_Samp_Fields = {
+  __typename?: 'stock_items_stddev_samp_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Streaming cursor of the table "stock_items" */
+export type Stock_Items_Stream_Cursor_Input = {
+  /** Stream column input with initial value */
+  initial_value: Stock_Items_Stream_Cursor_Value_Input;
+  /** cursor ordering */
+  ordering?: InputMaybe<Cursor_Ordering>;
+};
+
+/** Initial value of the column from where the streaming should start */
+export type Stock_Items_Stream_Cursor_Value_Input = {
+  on_hand?: InputMaybe<Scalars['Int']['input']>;
+  product_id?: InputMaybe<Scalars['uuid']['input']>;
+  reorder_level?: InputMaybe<Scalars['Int']['input']>;
+  reorder_qty?: InputMaybe<Scalars['Int']['input']>;
+  reserved?: InputMaybe<Scalars['Int']['input']>;
+  sku?: InputMaybe<Scalars['String']['input']>;
+  updated_at?: InputMaybe<Scalars['timestamptz']['input']>;
+};
+
+/** aggregate sum on columns */
+export type Stock_Items_Sum_Fields = {
+  __typename?: 'stock_items_sum_fields';
+  on_hand?: Maybe<Scalars['Int']['output']>;
+  reorder_level?: Maybe<Scalars['Int']['output']>;
+  reorder_qty?: Maybe<Scalars['Int']['output']>;
+  reserved?: Maybe<Scalars['Int']['output']>;
+};
+
+/** update columns of table "stock_items" */
+export enum Stock_Items_Update_Column {
+  /** column name */
+  OnHand = 'on_hand',
+  /** column name */
+  ProductId = 'product_id',
+  /** column name */
+  ReorderLevel = 'reorder_level',
+  /** column name */
+  ReorderQty = 'reorder_qty',
+  /** column name */
+  Reserved = 'reserved',
+  /** column name */
+  Sku = 'sku',
+  /** column name */
+  UpdatedAt = 'updated_at'
+}
+
+export type Stock_Items_Updates = {
+  /** increments the numeric columns with given value of the filtered values */
+  _inc?: InputMaybe<Stock_Items_Inc_Input>;
+  /** sets the columns of the filtered rows to the given values */
+  _set?: InputMaybe<Stock_Items_Set_Input>;
+  /** filter the rows which have to be updated */
+  where: Stock_Items_Bool_Exp;
+};
+
+/** aggregate var_pop on columns */
+export type Stock_Items_Var_Pop_Fields = {
+  __typename?: 'stock_items_var_pop_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate var_samp on columns */
+export type Stock_Items_Var_Samp_Fields = {
+  __typename?: 'stock_items_var_samp_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate variance on columns */
+export type Stock_Items_Variance_Fields = {
+  __typename?: 'stock_items_variance_fields';
+  on_hand?: Maybe<Scalars['Float']['output']>;
+  reorder_level?: Maybe<Scalars['Float']['output']>;
+  reorder_qty?: Maybe<Scalars['Float']['output']>;
+  reserved?: Maybe<Scalars['Float']['output']>;
 };
 
 export type Subscription_Root = {
@@ -1944,6 +2977,28 @@ export type Subscription_Root = {
   products_by_pk?: Maybe<Products>;
   /** fetch data from the table in a streaming manner: "products" */
   products_stream: Array<Products>;
+  /** fetch data from the table: "stock_alerts" */
+  stock_alerts: Array<Stock_Alerts>;
+  /** fetch aggregated fields from the table: "stock_alerts" */
+  stock_alerts_aggregate: Stock_Alerts_Aggregate;
+  /** fetch data from the table: "stock_alerts" using primary key columns */
+  stock_alerts_by_pk?: Maybe<Stock_Alerts>;
+  /** fetch data from the table in a streaming manner: "stock_alerts" */
+  stock_alerts_stream: Array<Stock_Alerts>;
+  /** fetch data from the table: "stock_availability" */
+  stock_availability: Array<Stock_Availability>;
+  /** fetch aggregated fields from the table: "stock_availability" */
+  stock_availability_aggregate: Stock_Availability_Aggregate;
+  /** fetch data from the table in a streaming manner: "stock_availability" */
+  stock_availability_stream: Array<Stock_Availability>;
+  /** fetch data from the table: "stock_items" */
+  stock_items: Array<Stock_Items>;
+  /** fetch aggregated fields from the table: "stock_items" */
+  stock_items_aggregate: Stock_Items_Aggregate;
+  /** fetch data from the table: "stock_items" using primary key columns */
+  stock_items_by_pk?: Maybe<Stock_Items>;
+  /** fetch data from the table in a streaming manner: "stock_items" */
+  stock_items_stream: Array<Stock_Items>;
   /** fetch data from the table: "users" */
   users: Array<Users>;
   /** fetch aggregated fields from the table: "users" */
@@ -2072,6 +3127,91 @@ export type Subscription_RootProducts_StreamArgs = {
   batch_size: Scalars['Int']['input'];
   cursor: Array<InputMaybe<Products_Stream_Cursor_Input>>;
   where?: InputMaybe<Products_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_AlertsArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Alerts_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Alerts_Order_By>>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Alerts_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Alerts_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Alerts_Order_By>>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Alerts_By_PkArgs = {
+  id: Scalars['uuid']['input'];
+};
+
+
+export type Subscription_RootStock_Alerts_StreamArgs = {
+  batch_size: Scalars['Int']['input'];
+  cursor: Array<InputMaybe<Stock_Alerts_Stream_Cursor_Input>>;
+  where?: InputMaybe<Stock_Alerts_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_AvailabilityArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Availability_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Availability_Order_By>>;
+  where?: InputMaybe<Stock_Availability_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Availability_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Availability_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Availability_Order_By>>;
+  where?: InputMaybe<Stock_Availability_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Availability_StreamArgs = {
+  batch_size: Scalars['Int']['input'];
+  cursor: Array<InputMaybe<Stock_Availability_Stream_Cursor_Input>>;
+  where?: InputMaybe<Stock_Availability_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_ItemsArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Items_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Items_Order_By>>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Items_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Stock_Items_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Stock_Items_Order_By>>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
+};
+
+
+export type Subscription_RootStock_Items_By_PkArgs = {
+  product_id: Scalars['uuid']['input'];
+};
+
+
+export type Subscription_RootStock_Items_StreamArgs = {
+  batch_size: Scalars['Int']['input'];
+  cursor: Array<InputMaybe<Stock_Items_Stream_Cursor_Input>>;
+  where?: InputMaybe<Stock_Items_Bool_Exp>;
 };
 
 
@@ -2366,7 +3506,7 @@ export type OrderDetailQuery = { __typename?: 'query_root', orders_by_pk?: { __t
 export type ProductsListQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ProductsListQuery = { __typename?: 'query_root', products: Array<{ __typename?: 'products', id: string, sku: string, name: string, description?: string | null, unit_price_cents: number, stock_qty: number }> };
+export type ProductsListQuery = { __typename?: 'query_root', products: Array<{ __typename?: 'products', id: string, sku: string, name: string, description?: string | null, unit_price_cents: number }>, stock_availability: Array<{ __typename?: 'stock_availability', product_id?: string | null, available?: number | null }> };
 
 export type PlaceOrderMutationVariables = Exact<{
   items: Array<OrderItemInput> | OrderItemInput;
@@ -2386,6 +3526,6 @@ export type TransitionOrderMutation = { __typename?: 'mutation_root', transition
 
 export const OrdersListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"OrdersList"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"updated_at"},"value":{"kind":"EnumValue","value":"desc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"total_cents"}},{"kind":"Field","name":{"kind":"Name","value":"updated_at"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"display_name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}}]}}]}}]}}]} as unknown as DocumentNode<OrdersListQuery, OrdersListQueryVariables>;
 export const OrderDetailDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"OrderDetail"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orders_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"total_cents"}},{"kind":"Field","name":{"kind":"Name","value":"created_at"}},{"kind":"Field","name":{"kind":"Name","value":"updated_at"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"display_name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unit_price_cents"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"sku"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"events"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"created_at"},"value":{"kind":"EnumValue","value":"asc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"from_status"}},{"kind":"Field","name":{"kind":"Name","value":"to_status"}},{"kind":"Field","name":{"kind":"Name","value":"action"}},{"kind":"Field","name":{"kind":"Name","value":"actor_role"}},{"kind":"Field","name":{"kind":"Name","value":"created_at"}}]}}]}}]}}]} as unknown as DocumentNode<OrderDetailQuery, OrderDetailQueryVariables>;
-export const ProductsListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductsList"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"name"},"value":{"kind":"EnumValue","value":"asc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"unit_price_cents"}},{"kind":"Field","name":{"kind":"Name","value":"stock_qty"}}]}}]}}]} as unknown as DocumentNode<ProductsListQuery, ProductsListQueryVariables>;
+export const ProductsListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductsList"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"name"},"value":{"kind":"EnumValue","value":"asc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"unit_price_cents"}}]}},{"kind":"Field","name":{"kind":"Name","value":"stock_availability"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"product_id"}},{"kind":"Field","name":{"kind":"Name","value":"available"}}]}}]}}]} as unknown as DocumentNode<ProductsListQuery, ProductsListQueryVariables>;
 export const PlaceOrderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"PlaceOrder"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"items"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"OrderItemInput"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"placeOrder"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"items"},"value":{"kind":"Variable","name":{"kind":"Name","value":"items"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<PlaceOrderMutation, PlaceOrderMutationVariables>;
 export const TransitionOrderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"TransitionOrder"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"orderId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"action"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transitionOrder"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"orderId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"orderId"}}},{"kind":"Argument","name":{"kind":"Name","value":"action"},"value":{"kind":"Variable","name":{"kind":"Name","value":"action"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<TransitionOrderMutation, TransitionOrderMutationVariables>;

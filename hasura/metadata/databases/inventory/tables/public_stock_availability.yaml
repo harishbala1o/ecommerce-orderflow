@@ -1,0 +1,14 @@
+table:
+  name: stock_availability
+  schema: public
+select_permissions:
+  # Availability is safe to publish: it is what a shopper needs to decide.
+  # on_hand and reserved remain restricted to ops via stock_items.
+  - role: customer
+    permission:
+      columns: [product_id, sku, available]
+      filter: {}
+  - role: ops
+    permission:
+      columns: [product_id, sku, available]
+      filter: {}
