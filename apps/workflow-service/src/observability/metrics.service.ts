@@ -9,6 +9,7 @@ export class MetricsService {
   readonly transitions: Counter<"action" | "from" | "to" | "role">;
   readonly ordersPlaced: Counter<"role">;
   readonly requestDuration: Histogram<"route" | "outcome">;
+  readonly throttled: Counter<"route">;
 
   constructor() {
     this.registry.setDefaultLabels({ service: "workflow-service" });
@@ -31,6 +32,14 @@ export class MetricsService {
       help: "Handler duration by route and outcome (ok/error).",
       labelNames: ["route", "outcome"],
       buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5],
+      registers: [this.registry],
+    });
+    // Throttled requests are client errors, not outages, so they do not burn the
+    // availability error budget. This counter keeps them visible regardless.
+    this.throttled = new Counter({
+      name: "orderflow_throttled_total",
+      help: "Requests rejected by the rate limiter, by route.",
+      labelNames: ["route"],
       registers: [this.registry],
     });
   }

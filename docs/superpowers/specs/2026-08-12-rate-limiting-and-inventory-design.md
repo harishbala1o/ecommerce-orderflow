@@ -51,10 +51,12 @@ everyone behind the same address.
 A throttled request returns HTTP 429 with the structured shape the project already uses:
 `{ message, extensions: { code: "rate-limited" } }`.
 
-Because 429 is below 500, the existing metrics interceptor classifies it as
-`client_error`, so **throttling does not burn the availability error budget**. That is
-correct: refusing excess load is the system working, not failing. A dedicated
-`orderflow_throttled_total{route}` counter keeps it visible.
+Guards run before interceptors in NestJS, so a throttled request never reaches the metrics
+interceptor and therefore appears in **neither** the numerator nor the denominator of the
+RED histogram. **Throttling cannot burn the availability error budget**, which is correct:
+refusing excess load is the system working, not failing. Visibility comes instead from a
+dedicated `orderflow_throttled_total{route}` counter, which is the only place throttled
+requests are recorded.
 
 ---
 
