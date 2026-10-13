@@ -8,7 +8,7 @@ Validated in the isolated `orderflow-test` stack. Nothing merges to `main` witho
 | Phase | Scope | Status |
 |-------|-------|--------|
 | Test environment | Isolated stack, readiness gate, baseline | Complete |
-| 0 | Safety foundations: roles, atomic receipts, idempotency, concurrency, error classes | In progress |
+| 0 | Safety foundations: roles, atomic receipts, idempotency, concurrency, error classes | Complete |
 | 1 | Operations queue, collaboration, safe actions | Not started |
 | 2 | Actionable inventory | Not started |
 | 3 | Exception and reconciliation console | Not started |
@@ -112,7 +112,25 @@ secret. No browser session is issued that role.
 - Moving dedup inside the effect transaction lengthens the transaction. Acceptable: the
   effect is a handful of indexed writes.
 
-## Phase 0 acceptance tests
+## Phase 0 acceptance results
+
+All verified in the `orderflow-test` stack on commit `bd1c2a1`.
+
+| Acceptance test | Result |
+|---|---|
+| business_admin cannot perform an unrestricted Hasura query | Pass: 21/21 in `test-permissions.sh`; insert, bulk update and untracked reads all denied |
+| A failed stock effect leaves no receipt and the retry applies once | Pass: regression test, and it fails against the previous code |
+| Duplicate product lines reserve the summed quantity | Pass: 2+3 reserves 5, verified live through GraphQL |
+| Identical reservation replay succeeds; changed payload conflicts | Pass |
+| Identical placement replay returns the original order; changed payload conflicts | Pass, verified live |
+| A hold confirmed between sweeper selection and release is not reclaimed | Pass |
+| A stale expected version is rejected with the current state | Pass, verified live with two operators |
+| Infrastructure failures surface as 5xx, not 400 | Pass: 400 malformed, 404 unknown, 409 conflict, 500 unknown |
+
+Still to do, carried into later phases: a forced database outage asserting 5xx end to end,
+and a crash-during-recovery test, which belongs with the reconciliation work in phase 3.
+
+## Phase 0 acceptance tests (as planned)
 
 - A `business_admin` session cannot perform an unrestricted Hasura query; it sees exactly the
   permitted columns and rows.
