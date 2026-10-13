@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs, rate limiting and the inventory bounded context done.
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs, rate limiting, the inventory bounded context and the operator safety foundations done. Operator workflow features (queue, actionable inventory, reconciliation, returns) not started.
 >
 > **Visual architecture guide:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
 > diagrams, the request lifecycle, the test plan, and the Google Cloud deployment guide.
@@ -162,7 +162,7 @@ role gates — the crux), `packages/domain/src/state-machine.ts` (`applyTransiti
 ## 7. APIs, data models, workflows & integrations
 
 ### Data model (Postgres)
-- **`users`** — mirrors Keycloak subjects (`keycloak_id`), `email`, `display_name`, `role` (`customer|ops|admin`).
+- **`users`** — mirrors Keycloak subjects (`keycloak_id`), `email`, `display_name`, `role` (`customer|ops|business_admin`).
 - **`products`** — `sku`, `name`, `unit_price_cents`, `stock_qty` (money as integer cents).
 - **`orders`** — `customer_id → users`, `status` (enum `order_status`), `total_cents`, `updated_at` (trigger-maintained).
 - **`order_items`** — `order_id → orders` (cascade), `product_id → products`, `quantity`, `unit_price_cents` (price captured at order time).
