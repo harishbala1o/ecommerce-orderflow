@@ -305,6 +305,18 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-10-13 (operator safety foundations, branch `feature/operator-workflows`)** —
+  Phase 0 of the operator-workflow programme. The business administrator no longer holds
+  Hasura's built-in `admin`: that browser session could insert orders, bulk-rewrite order
+  status and read untracked tables with no audit row, which was demonstrated and removed.
+  The domain role is renamed `admin` to `business_admin` so it cannot be confused with
+  Hasura's superuser. The inventory event receipt and stock effect now commit together, so
+  a failed effect is retried instead of being silently skipped forever. Reservations sum
+  duplicate lines (previously an oversell) and are replay-safe. The sweeper re-checks expiry
+  under lock. Placement takes an idempotency key; transitions take an expected version.
+  Errors are classified by what happened rather than all being 400. New isolated
+  `orderflow-test` stack, ADR 0009, 76 unit/integration tests plus 21 live authorization
+  assertions. Not merged to `main`; awaiting review.
 - **2026-08-12 (rate limiting + inventory)** — Per-user rate limiting on both services
   (30/min actions, 60/min inventory), with event handlers, health and metrics deliberately
   exempt so retries and probes are never throttled; throttles cannot burn the error budget

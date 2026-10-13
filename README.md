@@ -55,8 +55,17 @@ The *why* behind each major choice is recorded as [Architecture Decision Records
 - **M5d — ADRs + architecture docs** ✅
 - **Rate limiting (per-user, retries and probes exempt)** ✅
 - **Inventory service (second bounded context, reserve/release/commit saga, stock alerts)** ✅
+- **Operator safety foundations (scoped business_admin role, atomic event receipts,
+  idempotent placement, optimistic concurrency)** ✅ *(branch `feature/operator-workflows`)*
 
 **Phase 1 complete.**
+
+> **Breaking change on `feature/operator-workflows`.** The privileged role is now
+> `business_admin`, not `admin`. Hasura reserves `admin` for a built-in role that bypasses
+> every permission check, and no browser session may hold it. After pulling, recreate
+> Keycloak so the updated realm is imported: `docker compose -f infra/docker/compose.yaml
+> up -d --force-recreate keycloak`. The database role label is migrated automatically.
+> See [ADR 0009](docs/adr/0009-operator-safety-foundations.md).
 
 ## Development
 
@@ -108,7 +117,7 @@ Sign in with one of the demo personas (dev-only credentials, password `demo1234`
 |---|---|---|
 | `cara` | customer | Place orders, view/cancel own pending orders |
 | `otto` | ops | See all orders, drive fulfillment (confirm → deliver, returns) |
-| `ada` | admin | Everything, incl. force-cancel of shipped orders |
+| `ada` | business_admin | Everything, incl. force-cancel of shipped orders |
 
 Auth flow: Keycloak issues a JWT whose claims (`sub`, realm roles, a
 `hasura_default_role` attribute) map to Hasura session variables via `claims_map`.
@@ -156,6 +165,16 @@ Three pillars, correlated:
   rules, multi-window multi-burn-rate error-budget alerts routed to Alertmanager, and an
   error-budget Grafana dashboard. Business rejections (forbidden/illegal transitions) are
   correctly excluded from the availability budget. See [docs/slo.md](docs/slo.md).
+
+## Isolated test environment
+
+A second stack on separate ports, databases, volume and realm, for developing operator
+workflows without touching dev data. See [docs/TEST_ENVIRONMENT.md](docs/TEST_ENVIRONMENT.md).
+
+```bash
+make test-env && make test-build && make test-up && make test-seed
+./infra/docker/test-permissions.sh   # 21 authorization assertions
+```
 
 ## End-to-end tests
 
