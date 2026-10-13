@@ -5,7 +5,7 @@ import { defineConfig } from "@playwright/test";
  *
  * Default is the dev stack on :3000 (`make up` at the repo root). Set
  * E2E_BASE_URL=http://localhost:13000 to run against the isolated test stack,
- * with the dashboard started by `pnpm dev:test` and apps/web/.env.test.local
+ * with the dashboard started by `pnpm dev:test` and apps/web/.env.test.example copied to .env.local
  * in place.
  */
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";

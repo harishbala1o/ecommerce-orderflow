@@ -60,7 +60,7 @@ nothing signs in as him. His order exists so RBAC isolation can be asserted dete
 
 ```bash
 cd apps/web
-cp .env.test.local .env.local   # test stack ports and realm
+cp .env.test.example .env.local   # test stack ports and realm
 pnpm dev:test                   # http://localhost:13000
 ```
 
