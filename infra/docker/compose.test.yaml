@@ -1,5 +1,12 @@
 # Isolated test stack.
 #
+# NOTE ON `!override`: Compose MERGES sequences across files. A plain `ports:`
+# list here would ADD the test ports while keeping the base file's dev ports, so
+# the test stack would squat on 8080/8081/5432/3001/3002 and collide with dev.
+# `!override` replaces the list outright. The same trap applies to `volumes`,
+# which is why the Keycloak realm below is mounted at the base file's own target
+# path rather than a new one.
+#
 # This is an OVERRIDE applied on top of compose.yaml, so the services stay in
 # one place. Everything that could collide with a running dev stack is changed
 # here: published ports, the Keycloak realm, and (via .env.test) the database
@@ -13,7 +20,7 @@
 
 services:
   postgres:
-    ports:
+    ports: !override
       - "55432:5432"
     volumes:
       # Named volume is project-scoped, so this is a different disk from dev.
@@ -21,13 +28,13 @@ services:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
 
   workflow-service:
-    ports:
+    ports: !override
       - "13001:3001"
     environment:
       LOG_LEVEL: debug
 
   inventory-service:
-    ports:
+    ports: !override
       - "13002:3002"
     environment:
       LOG_LEVEL: debug
@@ -36,7 +43,7 @@ services:
       RESERVATION_TTL_SECONDS: "60"
 
   keycloak:
-    ports:
+    ports: !override
       - "18081:8080"
     volumes:
       # Mounted at the SAME target path as the dev realm so this replaces it.
@@ -52,7 +59,7 @@ services:
       retries: 40
 
   hasura:
-    ports:
+    ports: !override
       - "18080:8080"
     environment:
       HASURA_GRAPHQL_JWT_SECRET: >-
