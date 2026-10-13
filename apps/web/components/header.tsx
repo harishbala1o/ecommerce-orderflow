@@ -7,7 +7,7 @@ export function Header() {
   const { data: session } = useSession();
   if (!session) return null;
 
-  const canPlaceOrders = session.role === "customer" || session.role === "admin";
+  const canPlaceOrders = session.role === "customer" || session.role === "business_admin";
 
   // Federated logout: clearing only the next-auth session would leave the
   // Keycloak SSO cookie alive, silently re-authenticating the same user on

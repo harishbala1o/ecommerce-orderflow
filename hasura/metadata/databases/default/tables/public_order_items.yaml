@@ -20,3 +20,7 @@ select_permissions:
     permission:
       columns: [id, order_id, product_id, quantity, unit_price_cents]
       filter: {}
+  - role: business_admin
+    permission:
+      columns: [id, order_id, product_id, quantity, unit_price_cents]
+      filter: {}

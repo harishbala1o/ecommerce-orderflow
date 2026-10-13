@@ -1,6 +1,6 @@
 # Ecommerce OrderFlow: Architecture and Onboarding Guide
 
-**Version 1.1 · Last updated 2026-08-12 · Status: Phase 1 complete, Phase 2 infrastructure written, Phase 3 in progress**
+**Version 1.2 · Last updated 2026-10-13 · Status: Phase 1 complete, Phase 2 infrastructure written, Phase 3 in progress**
 
 This document is the single visual and technical reference for the Ecommerce OrderFlow
 project. It is written for someone who is completely new to software engineering, so every
@@ -81,7 +81,14 @@ Three kinds of people use it:
 |--------|-----------|------------------|
 | A shopper | `customer` | Place an order, see only their own orders, cancel while still pending |
 | A warehouse worker | `ops` | See all orders, move them through confirm, pack, ship, deliver, and returns |
-| A manager | `admin` | Everything, including force cancelling an order that has already shipped |
+| A manager | `business_admin` | Everything, including force cancelling an order that has already shipped |
+
+> **Why `business_admin` and not `admin`.** Hasura reserves the name `admin` for a built-in
+> role that bypasses every permission check. If a signed-in person held it, they could read
+> and rewrite any table directly from the browser, with no audit trail and no rule checking.
+> The manager role is therefore a separate, explicitly permissioned role, and Hasura's own
+> `admin` is reachable only by server-side tooling holding the admin secret. See
+> [ADR 0009](adr/0009-operator-safety-foundations.md).
 
 ## 2. Concepts you need first
 
@@ -512,7 +519,7 @@ erDiagram
         text keycloak_id "matches the JWT sub claim"
         text email
         text display_name
-        text role "customer, ops or admin"
+        text role "customer, ops or business_admin"
         timestamptz created_at
     }
     products {
@@ -524,6 +531,7 @@ erDiagram
     }
     orders {
         uuid id PK
+        integer version "bumped on every transition, for optimistic concurrency"
         uuid customer_id FK
         order_status status "the enum from the state machine"
         integer total_cents
@@ -551,6 +559,15 @@ erDiagram
     processed_events {
         text event_id PK "Hasura delivery id"
         timestamptz processed_at
+    }
+
+    idempotency_keys {
+        text operation PK "with actor_id and key"
+        uuid actor_id PK
+        text key PK "supplied by the caller"
+        text fingerprint "hash of the payload"
+        text status "in_progress, succeeded or failed"
+        jsonb response "replayed on an identical retry"
     }
 
     users ||--o{ orders : "places"
@@ -666,7 +683,7 @@ The rules encoded above, in words:
    packed.
 2. A customer may cancel their own order only while it is still `PENDING`. Once the
    warehouse has started work, cancelling becomes a staff decision.
-3. Only an `admin` may cancel an order that has already shipped, because that has physical
+3. Only a `business_admin` may cancel an order that has already shipped, because that has physical
    and financial consequences.
 4. `DELIVERED` is **not** a final state, because a delivered order can still be returned.
    The only truly final states are `CANCELLED` and `RETURNED`.
@@ -887,6 +904,7 @@ sequenceDiagram
         S-->>H: 200 ok
     and stock consumer
         H->>I: POST /events/order-event
+        Note over I: receipt and stock effect share<br/>ONE transaction, so a failure<br/>rolls both back and the retry works
         I->>I: first delivery? (processed_events)
         alt to_status = CANCELLED
             I->>I: release the hold
@@ -907,6 +925,13 @@ guarantees *at least once* delivery, so retries can deliver a duplicate. Each se
 its own `processed_events` table, so a customer never gets the same notification twice and
 stock is never released twice. The inventory handler has a second guard as well: a replay
 finds no `HELD` reservation and changes nothing.
+
+The receipt is written **inside the same transaction as the stock effect**. Recording the
+delivery first and committing it separately looks equivalent but is not: if the effect then
+fails, the receipt has already been saved, the retry sees the delivery as handled and skips
+it, and the stock is never released. Rolling both back together is what makes at-least-once
+delivery actually deliver. The same two guards cover reordering: whichever of cancel or ship
+is applied first moves the reservation out of `HELD`, so the later one changes nothing.
 
 **Fan-out.** One append-only table has two consumers that know nothing about each other. If
 the notification handler is broken, stock still stays correct, and the reverse holds too.
@@ -1149,9 +1174,10 @@ running it, not just by writing it.
 | **Phase 3** | SLOs, error budget alerts, Alertmanager | ✅ Complete |
 | **Phase 3** | Rate limiting (per-user, with retries and probes exempt) | ✅ Complete |
 | **Phase 3** | Inventory service: second bounded context, reserve/release/commit saga, alerts | ✅ Complete |
+| **Phase 3** | Operator safety foundations: scoped `business_admin`, atomic event receipts, idempotent placement, optimistic concurrency | ✅ Complete |
 
 Repository facts at the time of writing: 4 continuous integration workflows,
-8 Architecture Decision Records, 67 automated tests across 6 packages, and two
+9 Architecture Decision Records, 80 automated tests across 6 packages, and two
 independently deployable services.
 
 ## 16. Features completed
@@ -1172,6 +1198,14 @@ independently deployable services.
 - **Low stock alerting** with a suggested reorder quantity, deduplicated by a database
   constraint, resolved by receiving stock.
 - **Per-user rate limiting** that deliberately exempts event retries and health probes.
+- **A scoped `business_admin` role.** No signed-in person holds Hasura's unrestricted
+  built-in `admin`, so every read and write a browser can make is explicitly permitted.
+- **Idempotent order placement.** A retry after a timeout returns the original order rather
+  than placing a second one; the same key with a different payload is refused as a conflict.
+- **Optimistic concurrency.** Two operators acting on one order no longer overwrite each
+  other; the second is told what changed and what the order looks like now.
+- **An isolated test stack** on its own ports, databases, volume and realm, so operator work
+  can be developed and demonstrated without touching dev data.
 
 **Platform and operations**
 
@@ -1233,6 +1267,12 @@ Stated plainly, because a document that hides limitations is not useful.
   the event is delivered, not at the instant of cancellation. This is the accepted cost of
   the bounded-context split, recorded in ADR 0007. The failure direction is safe: stock can
   be held slightly too long, never sold twice.
+- **Rate limits and idempotency keys are opt-in for the caller.** Placement is only
+  protected from duplicate submission when the client sends a key; nothing forces it to.
+- **An `in_progress` idempotency claim is not yet reconciled.** A process that crashes
+  mid-placement leaves a durable claim that blocks that key until it is cleared. It is
+  deliberately surfaced as a conflict rather than guessed at, and the recovery path belongs
+  with the reconciliation work that is not yet built.
 - **The catalogue and stock are linked by convention.** `stock_items.product_id` mirrors
   `products.id` with no foreign key, because they are separate databases. Nothing currently
   reconciles a product that exists in one and not the other.
@@ -1295,14 +1335,14 @@ delivery so a bad release affects a fraction of traffic rather than everyone.
 
 ### 20.1 Automated tests
 
-67 automated tests run on every push to GitHub.
+80 automated tests run on every push to GitHub.
 
 | Suite | Count | Type | What it proves |
 |-------|-------|------|----------------|
 | `packages/domain` | 19 | Unit | Every legal transition is allowed, every illegal one is rejected, every role gate holds, and the "is it final" rule is derived from the transition table rather than duplicated |
 | `packages/config` | 4 | Unit | Invalid configuration fails immediately at start up with a readable message, rather than causing a mysterious failure later |
-| `apps/workflow-service` | 13 | Unit + integration | Against a **real PostgreSQL database** in a container: the placement saga (stock held before the order exists, the hold confirmed afterwards, no order created when stock is short, and a compensating release when the local write fails), the full lifecycle, ownership enforcement, illegal transitions; plus unit tests for the rate-limit tracker |
-| `apps/inventory-service` | 31 | Unit + integration | Pure stock rules (availability, alert level boundaries, suggested quantity) exhaustively; and against a real database: reserve, atomic multi-line rejection, idempotent re-reserve, release, commit, replay safety, confirm and expiry sweeping, alert opening and resolution, and a **concurrency test proving two simultaneous reservations cannot oversell the last units** |
+| `apps/workflow-service` | 19 | Unit + integration | Against a **real PostgreSQL database** in a container: the placement saga (stock held before the order exists, the hold confirmed afterwards, no order created when stock is short, and a compensating release when the local write fails), the full lifecycle, ownership enforcement, illegal transitions; idempotent placement including per-actor key scoping; optimistic concurrency with two operators racing one order; plus unit tests for the rate-limit tracker |
+| `apps/inventory-service` | 38 | Unit + integration | Pure stock rules (availability, alert level boundaries, suggested quantity) exhaustively; and against a real database: reserve, atomic multi-line rejection, idempotent re-reserve, release, commit, replay safety, confirm and expiry sweeping, alert opening and resolution, and a **concurrency test proving two simultaneous reservations cannot oversell the last units**; plus duplicate-line summing, replay-safe retries, atomic event receipts, and the expiry/confirmation race |
 | `apps/web/e2e` | 2 | End to end | With a real browser against the whole running stack: a customer places an order and an operations user fulfils it through to delivered with the audit trail visible, and a customer cannot open another customer's order |
 
 Every push also runs linting, TypeScript type checking across all eight packages, and
@@ -1340,6 +1380,16 @@ These were checked by hand during development and confirmed working:
   showed the full RESERVE, COMMIT, RELEASE and RECEIVE trail with correct running balances.
 - **Second Hasura data source:** stock and alerts readable through the same GraphQL endpoint
   with role-appropriate columns, and metadata reported consistent.
+- **Authorization matrix:** 21 assertions run against the live stack
+  (`infra/docker/test-permissions.sh`), covering what each role may read and the fact that no
+  browser role can insert an order, rewrite order status, write stock, or read the
+  idempotency ledger. The capability being removed was first demonstrated to exist.
+- **Migration paths:** the phase 0 migration applied cleanly both to a fresh database and as
+  an upgrade over a stack that already held data.
+- **Idempotency and concurrency, end to end through GraphQL:** a repeated placement returned
+  the original order, the same key with a changed payload was refused, and of two operators
+  acting on one order the second received the current version and status instead of
+  overwriting the first.
 
 ## 21. Tests still required before production
 
@@ -1788,6 +1838,18 @@ overlay already sets several of these.
 | Grafana | <http://localhost:3300> | Dashboards |
 | PostgreSQL | `localhost:5432` | Both databases: `ecommerce_orderflow` and `ecommerce_orderflow_inventory` |
 
+The isolated test stack runs the same services on different ports so the two can run side by
+side. See [TEST_ENVIRONMENT.md](TEST_ENVIRONMENT.md).
+
+| What | Dev | Test |
+|------|-----|------|
+| Dashboard | 3000 | 13000 |
+| Workflow service | 3001 | 13001 |
+| Inventory service | 3002 | 13002 |
+| Hasura | 8080 | 18080 |
+| Keycloak | 8081 | 18081 |
+| PostgreSQL | 5432 | 55432 |
+
 ## Appendix B: Demo accounts
 
 Development only. Password for all three is `demo1234`.
@@ -1805,7 +1867,13 @@ Development only. Password for all three is `demo1234`.
 make up            # start Postgres, Keycloak, Hasura, Workflow Service
 make obs-up        # the same plus Prometheus, Tempo, Alertmanager, Grafana
 make db-init       # create the inventory database if the volume predates it
-make seed          # load sample users, 12 products with stock levels, an example order
+make seed          # load sample users, 12 products with stock levels, example orders
+
+# The isolated test stack, for operator work (see docs/TEST_ENVIRONMENT.md)
+make test-env      # generate .env.test with random local-only secrets
+make test-up       # start it and block until genuinely ready
+make test-seed     # seed it
+make test-reset    # drop ONLY the test volume
 make smoke         # verify the API returns seeded data with relationships
 make down          # stop the containers
 make reset         # stop and also delete the database volume

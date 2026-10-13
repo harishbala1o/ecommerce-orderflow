@@ -12,3 +12,7 @@ select_permissions:
     permission:
       columns: [product_id, sku, on_hand, reserved, reorder_level, reorder_qty, updated_at]
       filter: {}
+  - role: business_admin
+    permission:
+      columns: [product_id, sku, on_hand, reserved, reorder_level, reorder_qty, updated_at]
+      filter: {}

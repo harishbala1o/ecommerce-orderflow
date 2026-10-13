@@ -14,7 +14,7 @@ describe("applyTransition", () => {
   });
 
   it("throws IllegalTransitionError when no rule exists", () => {
-    expect(() => applyTransition({ current: "DELIVERED", action: "ship", role: "admin" }))
+    expect(() => applyTransition({ current: "DELIVERED", action: "ship", role: "business_admin" }))
       .toThrow(IllegalTransitionError);
   });
 
@@ -29,7 +29,7 @@ describe("applyTransition", () => {
   });
 
   it("allows admin force-cancel of a SHIPPED order", () => {
-    expect(applyTransition({ current: "SHIPPED", action: "cancel", role: "admin" }).to)
+    expect(applyTransition({ current: "SHIPPED", action: "cancel", role: "business_admin" }).to)
       .toBe("CANCELLED");
   });
 

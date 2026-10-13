@@ -30,7 +30,7 @@ describe("transition table", () => {
   });
 
   it("restricts force-cancel of a SHIPPED order to admin only", () => {
-    expect(findRule("SHIPPED", "cancel")?.allowedRoles).toEqual(["admin"]);
+    expect(findRule("SHIPPED", "cancel")?.allowedRoles).toEqual(["business_admin"]);
   });
 
   it("lets a customer cancel only from PENDING", () => {

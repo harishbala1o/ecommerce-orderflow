@@ -8,7 +8,7 @@ actions:
           value_from_env: ACTION_SECRET
     permissions:
       - role: customer
-      - role: admin
+      - role: business_admin
     comment: Place a new order (customer/admin)
   - name: transitionOrder
     definition:
@@ -20,7 +20,7 @@ actions:
     permissions:
       - role: customer
       - role: ops
-      - role: admin
+      - role: business_admin
     comment: Advance an order through its lifecycle
 custom_types:
   enums: []

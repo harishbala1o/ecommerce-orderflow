@@ -6,9 +6,18 @@
   "ssoSessionIdleTimeout": 7200,
   "roles": {
     "realm": [
-      { "name": "customer", "description": "Places and cancels own pending orders" },
-      { "name": "ops", "description": "Advances orders through fulfillment" },
-      { "name": "admin", "description": "Full visibility and overrides" }
+      {
+        "name": "customer",
+        "description": "Places and cancels own pending orders"
+      },
+      {
+        "name": "ops",
+        "description": "Advances orders through fulfillment"
+      },
+      {
+        "name": "business_admin",
+        "description": "Business administrator: elevated domain permissions, explicitly scoped in Hasura."
+      }
     ]
   },
   "users": [
@@ -20,9 +29,21 @@
       "lastName": "Admin",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }],
-      "realmRoles": ["admin"],
-      "attributes": { "hasura_default_role": ["admin"] }
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "business_admin"
+      ],
+      "attributes": {
+        "hasura_default_role": [
+          "business_admin"
+        ]
+      }
     },
     {
       "id": "22222222-2222-2222-2222-222222222222",
@@ -32,9 +53,21 @@
       "lastName": "Ops",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }],
-      "realmRoles": ["ops"],
-      "attributes": { "hasura_default_role": ["ops"] }
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ops"
+      ],
+      "attributes": {
+        "hasura_default_role": [
+          "ops"
+        ]
+      }
     },
     {
       "id": "33333333-3333-3333-3333-333333333333",
@@ -44,9 +77,21 @@
       "lastName": "Customer",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }],
-      "realmRoles": ["customer"],
-      "attributes": { "hasura_default_role": ["customer"] }
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "customer"
+      ],
+      "attributes": {
+        "hasura_default_role": [
+          "customer"
+        ]
+      }
     }
   ],
   "clients": [
@@ -57,9 +102,16 @@
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["http://localhost:3000"],
-      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "http://localhost:3000/*" },
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
       "protocolMappers": [
         {
           "name": "hasura-default-role",

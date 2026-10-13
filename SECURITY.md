@@ -30,6 +30,10 @@ Browser ──(1) OIDC──► Keycloak
    Hasura validates the signature against Keycloak's JWKS and derives the role
    and user id from the token's claims (`claims_map`). The browser cannot
    choose its own role — allowed roles come from the verified token.
+   **No browser session is ever issued Hasura's built-in `admin` role**, which
+   bypasses every permission check. The privileged business role is
+   `business_admin`, which is explicitly permissioned table by table. Hasura's
+   `admin` belongs only to server-side tooling holding the admin secret.
 3. **Hasura ↔ services** — neither service is a public API. Both are reachable
    only from Hasura (and the inventory service additionally from the workflow
    service), authenticated by a shared `x-action-secret` header that Hasura
@@ -44,6 +48,23 @@ Browser ──(1) OIDC──► Keycloak
 
 - **SQL injection** — both services use only parameterized queries; Hasura
   generates parameterized SQL. No string-built SQL anywhere.
+- **Privilege escalation through the admin role** — the manager persona
+  previously carried `hasura_default_role: admin`, so that browser session could
+  insert orders, rewrite every order's status in one statement and read
+  untracked tables, with no audit row and no state-machine validation. The role
+  is now `business_admin` with explicit, column-level permissions. The matrix is
+  asserted against a running stack by `infra/docker/test-permissions.sh`, which
+  checks that no browser role can write order state or stock directly.
+- **Duplicate submission and lost retries** — state-changing operations accept
+  an idempotency key scoped to `(operation, actor, key)` with a payload
+  fingerprint. The same key and payload replays the stored result; a changed
+  payload is refused as a conflict rather than silently applied. Cross-service
+  event receipts are committed in the same transaction as their effect, so a
+  failed effect is genuinely retried instead of being recorded as done.
+- **Concurrent overwrites** — `orders.version` increments on every transition,
+  and a request may carry the version it believes it is acting on. A stale
+  request is rejected with the current version and status, so one operator
+  cannot silently overwrite another's change.
 - **Broken authorization** — enforced at two independent layers:
   - Hasura **row/column permissions** scope every read to the caller
     (a customer can only ever see their own orders/items/events).
@@ -58,9 +79,11 @@ Browser ──(1) OIDC──► Keycloak
   in an append-only `stock_movements` table inside the inventory service's own
   transaction, with `reserved <= on_hand` enforced as a database constraint so
   no code path can oversell.
-- **Token forgery / privilege escalation** — roles are taken from the
-  cryptographically verified JWT (Hasura via JWKS; the web app reads the role
-  from next-auth's validated OIDC profile, and treats it only as a UI hint).
+- **Token forgery** — roles are taken from the cryptographically verified JWT
+  (Hasura via JWKS; the web app reads the role from next-auth's validated OIDC
+  profile, and treats it only as a UI hint). The workflow service derives its
+  accepted role list from the shared domain package, so a role the state machine
+  does not know about cannot be accepted.
 - **Idempotency abuse** — event-trigger side effects are deduplicated on the
   Hasura delivery id, so at-least-once retries never double-apply.
 - **Resource exhaustion (basic)** — order input is bounded (max items/qty), the
@@ -70,9 +93,14 @@ Browser ──(1) OIDC──► Keycloak
   health and metrics endpoints are exempt so retries and probes never trip the
   limit. Note the counters are in-memory, so limits are per replica; an edge or
   ingress tier is still wanted in production.
+- **Error classification** — validation, authorization, conflict, not-found and
+  infrastructure failures are distinct classes mapping to 400, 403, 409, 404 and
+  500. An unrecognised failure returns 5xx: a blanket 400 would tell Hasura a
+  delivery had been validly rejected and stop the retry, silently dropping work.
 - **Secret exposure in git** — only `*.env.example` files (dev placeholders)
-  are committed; real `.env` / `.env.local` are gitignored. Build output and
-  caches are gitignored.
+  are committed; real `.env`, `.env.local` and `.env.test` are gitignored. The
+  isolated test stack generates its own random local-only secrets via
+  `make test-env`. Build output and caches are gitignored.
 
 ## Local-dev posture (intentional)
 

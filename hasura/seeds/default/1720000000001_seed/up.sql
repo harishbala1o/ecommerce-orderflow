@@ -1,7 +1,11 @@
 insert into users (id, keycloak_id, email, display_name, role) values
-  ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'admin@ecommerce-orderflow.dev',    'Ada Admin',      'admin'),
+  ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'admin@ecommerce-orderflow.dev',    'Ada Admin',      'business_admin'),
   ('22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', 'ops@ecommerce-orderflow.dev',      'Otto Ops',       'ops'),
-  ('33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 'customer@ecommerce-orderflow.dev', 'Cara Customer',  'customer')
+  ('33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 'customer@ecommerce-orderflow.dev', 'Cara Customer',  'customer'),
+  -- A second customer so RBAC isolation can be tested deterministically.
+  -- No Keycloak identity: nothing signs in as Carl, his order only needs to
+  -- exist and belong to someone other than Cara.
+  ('44444444-4444-4444-4444-444444444444', '44444444-4444-4444-4444-444444444444', 'customer2@ecommerce-orderflow.dev', 'Carl Customer', 'customer')
 on conflict (id) do nothing;
 
 insert into products (id, sku, name, description, unit_price_cents) values
@@ -21,13 +25,18 @@ on conflict (id) do nothing;
 
 insert into orders (id, customer_id, status, total_cents) values
   ('bbbbbbbb-0000-0000-0000-000000000001',
-   '33333333-3333-3333-3333-333333333333', 'PENDING', 17800)
+   '33333333-3333-3333-3333-333333333333', 'PENDING', 17800),
+  ('bbbbbbbb-0000-0000-0000-000000000002',
+   '44444444-4444-4444-4444-444444444444', 'PENDING', 29900)
 on conflict (id) do nothing;
 
 insert into order_items (order_id, product_id, quantity, unit_price_cents) values
   ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 1, 12900),
-  ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 1, 4900);
+  ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 1, 4900),
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000003', 1, 29900);
 
 insert into order_events (order_id, from_status, to_status, action, actor_id, actor_role) values
   ('bbbbbbbb-0000-0000-0000-000000000001', null, 'PENDING', 'create',
-   '33333333-3333-3333-3333-333333333333', 'customer');
+   '33333333-3333-3333-3333-333333333333', 'customer'),
+  ('bbbbbbbb-0000-0000-0000-000000000002', null, 'PENDING', 'create',
+   '44444444-4444-4444-4444-444444444444', 'customer');

@@ -6,19 +6,57 @@ import {
   InsufficientStockError,
 } from "@ecommerce-orderflow/domain";
 import {
+  IdempotencyConflictError,
   OrderNotFoundError,
   UnauthenticatedError,
   UnknownProductError,
+  VersionConflictError,
 } from "../orders/errors.js";
 
 /**
  * Maps a thrown error to a Hasura Action error response
- * (`{ message, extensions: { code } }`, HTTP 400). Unknown errors are masked as
- * a generic internal error so implementation details never leak to clients.
+ * (`{ message, extensions: { code } }`).
+ *
+ * The status reflects what actually happened rather than being a blanket 400:
+ * a conflict tells the caller to re-read and decide, and an unrecognised
+ * failure is a 5xx so it is visible as a failure rather than looking like a
+ * well-handled rejection. Unknown errors are masked so internals never leak.
  */
 export function toActionException(err: unknown): HttpException {
+  if (err instanceof VersionConflictError) {
+    return new HttpException(
+      {
+        message: err.message,
+        extensions: {
+          code: "version-conflict",
+          orderId: err.orderId,
+          expectedVersion: err.expected,
+          currentVersion: err.actual,
+          currentStatus: err.currentStatus,
+        },
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+  if (err instanceof IdempotencyConflictError) {
+    return new HttpException(
+      { message: err.message, extensions: { code: "idempotency-conflict" } },
+      HttpStatus.CONFLICT,
+    );
+  }
+
   const { code, message } = classify(err);
-  return new HttpException({ message, extensions: { code } }, HttpStatus.BAD_REQUEST);
+  const status =
+    code === "internal"
+      ? HttpStatus.INTERNAL_SERVER_ERROR
+      : code === "not-found" || code === "unknown-product"
+        ? HttpStatus.NOT_FOUND
+        : code === "forbidden" || code === "unauthenticated"
+          ? HttpStatus.FORBIDDEN
+          : code === "insufficient-stock"
+            ? HttpStatus.CONFLICT
+            : HttpStatus.BAD_REQUEST;
+  return new HttpException({ message, extensions: { code } }, status);
 }
 
 function classify(err: unknown): { code: string; message: string } {

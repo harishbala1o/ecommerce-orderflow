@@ -12,3 +12,8 @@ select_permissions:
     permission:
       columns: [product_id, sku, available]
       filter: {}
+
+  - role: business_admin
+    permission:
+      columns: [product_id, sku, available]
+      filter: {}

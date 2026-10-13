@@ -11,6 +11,11 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The test-stack dev server builds into its own directory. `next build` and
+  // `next dev` otherwise share .next, so running a production build while a dev
+  // server is up overwrites the chunks it is serving and every route starts
+  // failing with MODULE_NOT_FOUND until .next is deleted.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   transpilePackages: ["@ecommerce-orderflow/domain", "@ecommerce-orderflow/graphql-client"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

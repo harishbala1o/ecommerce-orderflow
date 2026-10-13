@@ -3,7 +3,7 @@
 > **Single source of truth** for anyone — human or AI — picking up this project.
 > Read this first, then the design spec in [`docs/superpowers/specs/`](docs/superpowers/specs/).
 >
-> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs, rate limiting and the inventory bounded context done.
+> **Last updated:** 2026-07-20 · **Current milestone:** Phase 1 done; Phase 2 Terraform authored+validated; Phase 3 SLOs, rate limiting, the inventory bounded context and the operator safety foundations done. Operator workflow features (queue, actionable inventory, reconciliation, returns) not started.
 >
 > **Visual architecture guide:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
 > diagrams, the request lifecycle, the test plan, and the Google Cloud deployment guide.
@@ -162,7 +162,7 @@ role gates — the crux), `packages/domain/src/state-machine.ts` (`applyTransiti
 ## 7. APIs, data models, workflows & integrations
 
 ### Data model (Postgres)
-- **`users`** — mirrors Keycloak subjects (`keycloak_id`), `email`, `display_name`, `role` (`customer|ops|admin`).
+- **`users`** — mirrors Keycloak subjects (`keycloak_id`), `email`, `display_name`, `role` (`customer|ops|business_admin`).
 - **`products`** — `sku`, `name`, `unit_price_cents`, `stock_qty` (money as integer cents).
 - **`orders`** — `customer_id → users`, `status` (enum `order_status`), `total_cents`, `updated_at` (trigger-maintained).
 - **`order_items`** — `order_id → orders` (cascade), `product_id → products`, `quantity`, `unit_price_cents` (price captured at order time).
@@ -305,6 +305,18 @@ test / test suites before claiming completion.
 ---
 
 ## Changelog
+- **2026-10-13 (operator safety foundations, branch `feature/operator-workflows`)** —
+  Phase 0 of the operator-workflow programme. The business administrator no longer holds
+  Hasura's built-in `admin`: that browser session could insert orders, bulk-rewrite order
+  status and read untracked tables with no audit row, which was demonstrated and removed.
+  The domain role is renamed `admin` to `business_admin` so it cannot be confused with
+  Hasura's superuser. The inventory event receipt and stock effect now commit together, so
+  a failed effect is retried instead of being silently skipped forever. Reservations sum
+  duplicate lines (previously an oversell) and are replay-safe. The sweeper re-checks expiry
+  under lock. Placement takes an idempotency key; transitions take an expected version.
+  Errors are classified by what happened rather than all being 400. New isolated
+  `orderflow-test` stack, ADR 0009, 76 unit/integration tests plus 21 live authorization
+  assertions. Not merged to `main`; awaiting review.
 - **2026-08-12 (rate limiting + inventory)** — Per-user rate limiting on both services
   (30/min actions, 60/min inventory), with event handlers, health and metrics deliberately
   exempt so retries and probes are never throttled; throttles cannot burn the error budget

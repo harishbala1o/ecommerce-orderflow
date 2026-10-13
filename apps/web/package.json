@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint app lib components",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev:test": "NEXT_DIST_DIR=.next-test next dev --port 13000"
   },
   "dependencies": {
     "@ecommerce-orderflow/domain": "workspace:*",

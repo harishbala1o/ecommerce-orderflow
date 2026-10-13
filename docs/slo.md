@@ -21,6 +21,11 @@ Rate-limited requests are rejected by a guard, which runs before the metrics int
 they appear in neither the numerator nor the denominator and cannot burn the budget either.
 They are counted separately in `orderflow_throttled_total`.
 
+Errors are classified by what actually happened rather than all being 400: 400 malformed,
+403 forbidden, 404 unknown, 409 conflict (a version or idempotency clash), 500 infrastructure.
+Only the 5xx class burns the availability budget, which is the point of the distinction: a
+409 telling an operator that someone else changed the order first is the system working.
+
 ## Error budget
 
 A 99.5% availability SLO allows a **0.5% error budget** over 30 days (~3.6 hours of full

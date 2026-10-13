@@ -6,11 +6,20 @@ import { OrderRepository } from "../db/order.repository.js";
 import { MetricsService } from "../observability/metrics.service.js";
 import { InventoryClient } from "../inventory/inventory.client.js";
 import type { PlaceOrderInput, TransitionOrderInput, Session } from "./dto.js";
-import { OrderNotFoundError, UnauthenticatedError, UnknownProductError } from "./errors.js";
+import {
+  IdempotencyConflictError,
+  OrderNotFoundError,
+  UnauthenticatedError,
+  UnknownProductError,
+  VersionConflictError,
+} from "./errors.js";
+import { fingerprint } from "../common/idempotency.js";
 
 export interface OrderResult {
   id: string;
   status: string;
+  /** Current optimistic-concurrency version, for the caller's next request. */
+  version?: number;
 }
 
 const tracer = trace.getTracer("orderflow.workflow");
@@ -42,6 +51,44 @@ export class OrdersService {
     const userId = session.userId;
     const productIds = input.items.map((i) => i.productId);
 
+    // An idempotency key makes a retry after a timeout safe: without one, a
+    // client that retried a request that had actually succeeded would place a
+    // second order and hold the stock twice.
+    const key = input.idempotencyKey;
+    if (key) {
+      const print = fingerprint({ items: input.items });
+      const claim = await this.repo.withTransaction((client) =>
+        this.repo.claimIdempotencyKey(client, "placeOrder", userId, key, print),
+      );
+      if (claim.outcome === "conflict") throw new IdempotencyConflictError(key);
+      if (claim.outcome === "replay") return claim.response as OrderResult;
+      if (claim.outcome === "in_progress") {
+        // A durable claim is not a success. Surfacing it as a conflict keeps an
+        // unfinished attempt visible for recovery instead of inventing a result.
+        throw new IdempotencyConflictError(key);
+      }
+    }
+
+    try {
+      const result = await this.placeOrderInner(session, input, userId, productIds);
+      if (key) {
+        await this.repo.withTransaction((client) =>
+          this.repo.completeIdempotencyKey(client, "placeOrder", userId, key, result),
+        );
+      }
+      return result;
+    } catch (err) {
+      if (key) await this.repo.failIdempotencyKey("placeOrder", userId, key);
+      throw err;
+    }
+  }
+
+  private async placeOrderInner(
+    session: Session,
+    input: PlaceOrderInput,
+    userId: string,
+    productIds: string[],
+  ): Promise<OrderResult> {
     // Price the order first: an unknown product should fail before any stock is held.
     const { totalCents, priceById } = await this.priceOrder(productIds, input);
 
@@ -69,7 +116,7 @@ export class OrdersService {
           actorId: userId,
           actorRole: session.role,
         });
-        return { id: created.id, status: created.status };
+        return { id: created.id, status: created.status, version: created.version };
       });
     } catch (err) {
       await this.inventory.releaseQuietly(orderId);
@@ -120,6 +167,22 @@ export class OrdersService {
             throw new ForbiddenTransitionError(session.role, input.action, order.status);
           }
 
+          // Optimistic concurrency. The row is already locked FOR UPDATE, so
+          // this comparison is against the committed current version. A caller
+          // acting on stale data is told what changed instead of overwriting
+          // another operator's work.
+          if (
+            input.expectedVersion !== undefined &&
+            input.expectedVersion !== order.version
+          ) {
+            throw new VersionConflictError(
+              order.id,
+              input.expectedVersion,
+              order.version,
+              order.status,
+            );
+          }
+
           // Domain gate: legal transition + role permission (throws on violation).
           const result = applyTransition({
             current: order.status,
@@ -127,7 +190,7 @@ export class OrdersService {
             role: session.role,
           });
 
-          await this.repo.updateStatus(client, order.id, result.to);
+          const version = await this.repo.updateStatus(client, order.id, result.to);
           await this.repo.insertEvent(client, {
             orderId: order.id,
             fromStatus: result.from,
@@ -135,6 +198,7 @@ export class OrdersService {
             action: input.action,
             actorId: session.userId ?? null,
             actorRole: session.role,
+            reason: input.reason ?? null,
           });
 
           this.metrics.transitions.inc({
@@ -147,7 +211,7 @@ export class OrdersService {
           this.logger.log(
             `order ${order.id}: ${result.from} -> ${result.to} via ${input.action} by ${session.role}`,
           );
-          return { id: order.id, status: result.to };
+          return { id: order.id, status: result.to, version };
         });
       } finally {
         span.end();
