@@ -128,6 +128,24 @@ export class InventoryRepository {
     return rowCount ?? 0;
   }
 
+  /**
+   * Re-check, inside the caller's transaction and holding the row locks, that
+   * this order's holds are still unconfirmed and expired.
+   *
+   * Selection and release happen in separate statements, so a confirm can land
+   * in between. Without this re-check the sweeper would reclaim stock for an
+   * order that had just been confirmed, overselling it later.
+   */
+  async isStillExpired(client: PoolClient, orderId: string): Promise<boolean> {
+    const { rows } = await client.query<{ n: string }>(
+      `select count(*)::text as n from reservations
+       where order_id = $1 and status = 'HELD'
+         and expires_at is not null and expires_at < now()`,
+      [orderId],
+    );
+    return Number(rows[0]?.n ?? 0) > 0;
+  }
+
   /** Order ids whose holds have expired without ever being confirmed. */
   async findExpiredOrderIds(client: PoolClient, limit = 100): Promise<string[]> {
     const { rows } = await client.query<{ order_id: string }>(

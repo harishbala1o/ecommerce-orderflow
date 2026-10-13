@@ -7,7 +7,12 @@ import { Pool } from "pg";
 import { InventoryRepository } from "../src/db/inventory.repository.js";
 import { InventoryService } from "../src/inventory/inventory.service.js";
 import { MetricsService } from "../src/observability/metrics.service.js";
-import { InsufficientStockError, UnknownStockItemError } from "../src/common/errors.js";
+import {
+  InsufficientStockError,
+  ReservationConflictError,
+  UnknownStockItemError,
+} from "../src/common/errors.js";
+import { EventsService } from "../src/events/events.service.js";
 import type { ServiceConfig } from "../src/config/config.module.js";
 
 process.env.TESTCONTAINERS_RYUK_DISABLED = "true";
@@ -242,5 +247,134 @@ describe("concurrency", () => {
     const fulfilled = results.filter((r) => r.status === "fulfilled");
     expect(fulfilled).toHaveLength(1);
     expect(await levels(P2)).toEqual({ on_hand: 2, reserved: 2 });
+  });
+});
+
+describe("duplicate product lines", () => {
+  it("reserves the summed quantity when one product appears on two lines", async () => {
+    // Checking each line against the same pre-mutation snapshot, then letting
+    // the unique constraint swallow the second insert, would hold 2 of 5.
+    await service.reserve({
+      orderId: randomUUID(),
+      items: [
+        { productId: P1, quantity: 2 },
+        { productId: P1, quantity: 3 },
+      ],
+    });
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 5 });
+  });
+
+  it("rejects when the summed quantity exceeds availability, holding nothing", async () => {
+    await expect(
+      service.reserve({
+        orderId: randomUUID(),
+        items: [
+          { productId: P2, quantity: 1 },
+          { productId: P2, quantity: 2 }, // only 2 available in total
+        ],
+      }),
+    ).rejects.toBeInstanceOf(InsufficientStockError);
+    expect(await levels(P2)).toEqual({ on_hand: 2, reserved: 0 });
+  });
+});
+
+describe("reservation retry", () => {
+  it("succeeds on retry even when the first attempt consumed the last units", async () => {
+    const orderId = randomUUID();
+    // Take everything, so a naive availability re-check would refuse the retry.
+    await service.reserve({ orderId, items: [{ productId: P2, quantity: 2 }] });
+    await expect(
+      service.reserve({ orderId, items: [{ productId: P2, quantity: 2 }] }),
+    ).resolves.toMatchObject({ orderId });
+    expect(await levels(P2)).toEqual({ on_hand: 2, reserved: 2 });
+    expect(await movementKinds(P2)).toEqual(["RESERVE"]);
+  });
+
+  it("treats the same order with a changed quantity as a conflict", async () => {
+    const orderId = randomUUID();
+    await service.reserve({ orderId, items: [{ productId: P1, quantity: 2 }] });
+    await expect(
+      service.reserve({ orderId, items: [{ productId: P1, quantity: 5 }] }),
+    ).rejects.toBeInstanceOf(ReservationConflictError);
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 2 });
+  });
+});
+
+describe("event receipt atomicity", () => {
+  async function processedCount(): Promise<number> {
+    const { rows } = await pool.query<{ n: string }>(
+      "select count(*)::text as n from processed_events",
+    );
+    return Number(rows[0]!.n);
+  }
+
+  it("rolls the delivery receipt back when the stock effect fails, so the retry reprocesses", async () => {
+    const orderId = randomUUID();
+    await service.reserve({ orderId, items: [{ productId: P1, quantity: 4 }] });
+
+    // First delivery: the stock effect fails part way through.
+    const failing = {
+      releaseIn: () => Promise.reject(new Error("inventory write failed")),
+      commitIn: () => Promise.reject(new Error("inventory write failed")),
+    } as unknown as InventoryService;
+    const failingEvents = new EventsService(repo, failing);
+
+    await expect(
+      failingEvents.handleOrderEvent("delivery-1", { orderId, toStatus: "CANCELLED" }),
+    ).rejects.toThrow();
+
+    // The receipt must not survive the failure, or the retry would be skipped
+    // and the stock would stay held forever.
+    expect(await processedCount()).toBe(0);
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 4 });
+
+    // Hasura retries the same delivery id; this time it genuinely applies.
+    const events = new EventsService(repo, service);
+    await expect(
+      events.handleOrderEvent("delivery-1", { orderId, toStatus: "CANCELLED" }),
+    ).resolves.toEqual({ status: "released" });
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 0 });
+
+    // A third delivery of the same id changes nothing further.
+    await expect(
+      events.handleOrderEvent("delivery-1", { orderId, toStatus: "CANCELLED" }),
+    ).resolves.toEqual({ status: "skipped" });
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 0 });
+    expect(await movementKinds(P1)).toEqual(["RESERVE", "RELEASE"]);
+  });
+
+  it("applies only the first of a reordered cancel and ship pair", async () => {
+    const orderId = randomUUID();
+    await service.reserve({ orderId, items: [{ productId: P1, quantity: 3 }] });
+    const events = new EventsService(repo, service);
+
+    await events.handleOrderEvent("d-ship", { orderId, toStatus: "SHIPPED" });
+    // A late-arriving cancellation must not release stock that already shipped.
+    await events.handleOrderEvent("d-cancel", { orderId, toStatus: "CANCELLED" });
+
+    expect(await levels(P1)).toEqual({ on_hand: 7, reserved: 0 });
+    expect(await movementKinds(P1)).toEqual(["RESERVE", "COMMIT"]);
+  });
+});
+
+describe("sweeper and confirmation race", () => {
+  it("does not reclaim a hold confirmed between selection and release", async () => {
+    const orderId = randomUUID();
+    await service.reserve({ orderId, items: [{ productId: P1, quantity: 2 }] });
+    await pool.query(
+      "update reservations set expires_at = now() - interval '1 minute' where order_id = $1",
+      [orderId],
+    );
+
+    // The sweeper selects it as expired.
+    const candidates = await repo.withTransaction((c) => repo.findExpiredOrderIds(c));
+    expect(candidates).toContain(orderId);
+
+    // The order is confirmed before the sweeper gets to releasing it.
+    await service.confirm(orderId);
+
+    const stillExpired = await repo.withTransaction((c) => repo.isStillExpired(c, orderId));
+    expect(stillExpired).toBe(false);
+    expect(await levels(P1)).toEqual({ on_hand: 10, reserved: 2 });
   });
 });
