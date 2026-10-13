@@ -64,6 +64,27 @@ cp .env.test.local .env.local   # test stack ports and realm
 pnpm dev:test                   # http://localhost:13000
 ```
 
+`dev:test` builds into `.next-test` rather than `.next`. `next build` and `next dev`
+otherwise share one directory, so running `pnpm build` while a dev server is up overwrites
+the chunks it is serving and every route then fails with `MODULE_NOT_FOUND` until `.next` is
+deleted. Separate directories make the two safe to run at the same time.
+
+## Hasura console and admin secret
+
+The console is at <http://localhost:18080/console>. It asks for the admin secret, which was
+generated locally by `make test-env` and lives in the gitignored `.env.test`:
+
+```bash
+grep '^HASURA_GRAPHQL_ADMIN_SECRET=' .env.test | cut -d= -f2-
+```
+
+The dev stack's equivalent is at <http://localhost:8080/console>, with its secret in
+`.env` (seeded from the committed, self-labelled dev default in `.env.example`).
+
+> The admin secret is Hasura's unrestricted role. It bypasses every permission check, which
+> is exactly why no browser session is issued it (see
+> [ADR 0009](adr/0009-operator-safety-foundations.md)). Use it for console and tooling only.
+
 ## Running the checks
 
 ```bash

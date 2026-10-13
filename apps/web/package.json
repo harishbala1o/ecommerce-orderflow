@@ -9,7 +9,7 @@
     "lint": "eslint app lib components",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "dev:test": "next dev --port 13000"
+    "dev:test": "NEXT_DIST_DIR=.next-test next dev --port 13000"
   },
   "dependencies": {
     "@ecommerce-orderflow/domain": "workspace:*",
