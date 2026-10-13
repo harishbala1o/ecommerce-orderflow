@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, beforeEach, describe, it, expect, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { GenericContainer, Wait, type StartedTestContainer } from "testcontainers";
 import { Pool } from "pg";
@@ -9,6 +9,10 @@ import {
   InsufficientStockError,
 } from "@ecommerce-orderflow/domain";
 import { OrderRepository } from "../src/db/order.repository.js";
+import {
+  IdempotencyConflictError,
+  VersionConflictError,
+} from "../src/orders/errors.js";
 import { OrdersService } from "../src/orders/orders.service.js";
 import { MetricsService } from "../src/observability/metrics.service.js";
 import type { InventoryClient } from "../src/inventory/inventory.client.js";
@@ -17,8 +21,18 @@ import type { Session } from "../src/orders/dto.js";
 // Testcontainers' resource reaper is unnecessary here and can be flaky in CI.
 process.env.TESTCONTAINERS_RYUK_DISABLED = "true";
 
-const migration = (rel: string): string =>
-  readFileSync(fileURLToPath(new URL(`../../../hasura/migrations/default/${rel}`, import.meta.url)), "utf8");
+/**
+ * Applies every migration in order, rather than a hand-maintained list that
+ * silently goes stale the next time one is added.
+ */
+function applyAllMigrations(): string {
+  const dir = fileURLToPath(new URL("../../../hasura/migrations/default", import.meta.url));
+  return readdirSync(dir)
+    .filter((d) => /^\d+_/.test(d))
+    .sort()
+    .map((d) => readFileSync(`${dir}/${d}/up.sql`, "utf8"))
+    .join("\n");
+}
 
 const CUSTOMER = "33333333-3333-3333-3333-333333333333";
 const OTHER_CUSTOMER = "44444444-4444-4444-4444-444444444444";
@@ -61,9 +75,7 @@ beforeAll(async () => {
     database: "test",
   });
 
-  await pool.query(migration("1720000000000_init/up.sql"));
-  await pool.query(migration("1720000000002_processed_events/up.sql"));
-  await pool.query(migration("1720000000003_drop_products_stock_qty/up.sql"));
+  await pool.query(applyAllMigrations());
   await pool.query(
     `insert into users (id, email, display_name, role) values
        ($1,'c@x.dev','Cara','customer'),
@@ -213,5 +225,109 @@ describe("OrdersService transitions (integration)", () => {
       service.transitionOrder(opsSession, { orderId: id, action: "ship" }),
     ).rejects.toBeInstanceOf(IllegalTransitionError);
     expect(await statusOf(id)).toBe("PENDING");
+  });
+});
+
+describe("placement idempotency", () => {
+  it("replays the original order instead of placing a second one", async () => {
+    const key = "retry-key-aaaaaaaa";
+    const items = [{ productId: P1, quantity: 1 }] as const;
+
+    const first = await service.placeOrder(customerSession(), {
+      items: [...items],
+      idempotencyKey: key,
+    });
+    // The client never saw the response and retries the identical request.
+    const second = await service.placeOrder(customerSession(), {
+      items: [...items],
+      idempotencyKey: key,
+    });
+
+    expect(second.id).toBe(first.id);
+    // Exactly one order, and stock was held exactly once.
+    const { rows } = await pool.query("select 1 from orders where id = $1", [first.id]);
+    expect(rows).toHaveLength(1);
+    expect(inventory.reserve).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects the same key carrying a different payload", async () => {
+    const key = "reused-key-bbbbbbbb";
+    await service.placeOrder(customerSession(), {
+      items: [{ productId: P1, quantity: 1 }],
+      idempotencyKey: key,
+    });
+    await expect(
+      service.placeOrder(customerSession(), {
+        items: [{ productId: P1, quantity: 9 }],
+        idempotencyKey: key,
+      }),
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+  });
+
+  it("scopes keys per actor, so two customers may use the same key", async () => {
+    const key = "shared-key-cccccccc";
+    const a = await service.placeOrder(customerSession(), {
+      items: [{ productId: P1, quantity: 1 }],
+      idempotencyKey: key,
+    });
+    const b = await service.placeOrder(customerSession(OTHER_CUSTOMER), {
+      items: [{ productId: P1, quantity: 1 }],
+      idempotencyKey: key,
+    });
+    expect(b.id).not.toBe(a.id);
+  });
+});
+
+describe("optimistic concurrency", () => {
+  it("rejects a transition carrying a stale version and reports the current state", async () => {
+    const { id } = await service.placeOrder(customerSession(), {
+      items: [{ productId: P1, quantity: 1 }],
+    });
+    const placedVersion = (await pool.query<{ version: number }>(
+      "select version from orders where id=$1",
+      [id],
+    )).rows[0]!.version;
+
+    // Operator A confirms the order.
+    await service.transitionOrder(opsSession, {
+      orderId: id,
+      action: "confirm",
+      expectedVersion: placedVersion,
+    });
+
+    // Operator B was still looking at the pre-confirm version.
+    await expect(
+      service.transitionOrder(opsSession, {
+        orderId: id,
+        action: "pack",
+        expectedVersion: placedVersion,
+      }),
+    ).rejects.toBeInstanceOf(VersionConflictError);
+
+    // The losing request changed nothing.
+    expect(await statusOf(id)).toBe("CONFIRMED");
+  });
+
+  it("accepts a transition carrying the current version and returns the next one", async () => {
+    const { id } = await service.placeOrder(customerSession(), {
+      items: [{ productId: P1, quantity: 1 }],
+    });
+    const v = (await pool.query<{ version: number }>("select version from orders where id=$1", [id]))
+      .rows[0]!.version;
+    const result = await service.transitionOrder(opsSession, {
+      orderId: id,
+      action: "confirm",
+      expectedVersion: v,
+    });
+    expect(result.version).toBe(v + 1);
+  });
+
+  it("still works for callers that do not send a version", async () => {
+    const { id } = await service.placeOrder(customerSession(), {
+      items: [{ productId: P1, quantity: 1 }],
+    });
+    await expect(
+      service.transitionOrder(opsSession, { orderId: id, action: "confirm" }),
+    ).resolves.toMatchObject({ status: "CONFIRMED" });
   });
 });

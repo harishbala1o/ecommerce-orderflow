@@ -1,6 +1,20 @@
 type Mutation {
-  placeOrder(items: [OrderItemInput!]!): OrderMutationResult
-  transitionOrder(orderId: uuid!, action: String!): OrderMutationResult
+  """
+  Place an order. Supply idempotencyKey so that retrying after a timeout
+  returns the original order instead of placing a second one.
+  """
+  placeOrder(items: [OrderItemInput!]!, idempotencyKey: String): OrderMutationResult
+
+  """
+  Advance an order. Supply expectedVersion to be told when another operator has
+  changed the order first, instead of silently overwriting their work.
+  """
+  transitionOrder(
+    orderId: uuid!
+    action: String!
+    expectedVersion: Int
+    reason: String
+  ): OrderMutationResult
 }
 
 input OrderItemInput {
@@ -11,4 +25,6 @@ input OrderItemInput {
 type OrderMutationResult {
   id: uuid!
   status: String!
+  """Current concurrency version, to send with the next request."""
+  version: Int
 }
