@@ -11,15 +11,15 @@ export interface TransitionRule {
 }
 
 export const TRANSITIONS: readonly TransitionRule[] = [
-  { action: "confirm", from: "PENDING", to: "CONFIRMED", allowedRoles: ["ops", "admin"] },
-  { action: "pack", from: "CONFIRMED", to: "PACKED", allowedRoles: ["ops", "admin"] },
-  { action: "ship", from: "PACKED", to: "SHIPPED", allowedRoles: ["ops", "admin"] },
-  { action: "deliver", from: "SHIPPED", to: "DELIVERED", allowedRoles: ["ops", "admin"] },
-  { action: "cancel", from: "PENDING", to: "CANCELLED", allowedRoles: ["customer", "ops", "admin"] },
-  { action: "cancel", from: "CONFIRMED", to: "CANCELLED", allowedRoles: ["ops", "admin"] },
-  { action: "cancel", from: "PACKED", to: "CANCELLED", allowedRoles: ["ops", "admin"] },
-  { action: "cancel", from: "SHIPPED", to: "CANCELLED", allowedRoles: ["admin"] },
-  { action: "return", from: "DELIVERED", to: "RETURNED", allowedRoles: ["ops", "admin"] },
+  { action: "confirm", from: "PENDING", to: "CONFIRMED", allowedRoles: ["ops", "business_admin"] },
+  { action: "pack", from: "CONFIRMED", to: "PACKED", allowedRoles: ["ops", "business_admin"] },
+  { action: "ship", from: "PACKED", to: "SHIPPED", allowedRoles: ["ops", "business_admin"] },
+  { action: "deliver", from: "SHIPPED", to: "DELIVERED", allowedRoles: ["ops", "business_admin"] },
+  { action: "cancel", from: "PENDING", to: "CANCELLED", allowedRoles: ["customer", "ops", "business_admin"] },
+  { action: "cancel", from: "CONFIRMED", to: "CANCELLED", allowedRoles: ["ops", "business_admin"] },
+  { action: "cancel", from: "PACKED", to: "CANCELLED", allowedRoles: ["ops", "business_admin"] },
+  { action: "cancel", from: "SHIPPED", to: "CANCELLED", allowedRoles: ["business_admin"] },
+  { action: "return", from: "DELIVERED", to: "RETURNED", allowedRoles: ["ops", "business_admin"] },
 ];
 
 export function findRule(from: OrderStatus, action: OrderAction): TransitionRule | undefined {

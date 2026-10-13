@@ -17,6 +17,10 @@ select_permissions:
     permission:
       columns: [id, order_id, from_status, to_status, action, actor_id, actor_role, reason, correlation_id, created_at]
       filter: {}
+  - role: business_admin
+    permission:
+      columns: [id, order_id, from_status, to_status, action, actor_id, actor_role, reason, correlation_id, created_at]
+      filter: {}
 event_triggers:
   # Two independent consumers of the same append-only table. Neither knows about
   # the other, and a failure in one does not affect the other's delivery.
